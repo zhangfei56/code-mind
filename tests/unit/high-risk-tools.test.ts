@@ -1,0 +1,47 @@
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { applyPatchTool } from "../../src/tools/apply-patch.js";
+import { runShellTool } from "../../src/tools/run-shell.js";
+import type { ToolContext } from "../../src/shared/types.js";
+
+function createContext(workspaceRoot: string): ToolContext {
+  return {
+    sessionId: "session_high_risk",
+    workspaceRoot,
+    cwd: workspaceRoot,
+    mode: "auto_edit",
+  };
+}
+
+export async function runHighRiskToolTests(): Promise<void> {
+  const workspace = mkdtempSync(join(tmpdir(), "code-mind-high-risk-"));
+  mkdirSync(join(workspace, "src"));
+  writeFileSync(
+    join(workspace, "src", "math.ts"),
+    "export function add(a: number, b: number) {\n  return a - b;\n}\n",
+    "utf8",
+  );
+
+  const context = createContext(workspace);
+  const patch = [
+    "*** Begin Patch",
+    "*** Update File: src/math.ts",
+    "@@",
+    "-  return a - b;",
+    "+  return a + b;",
+    "*** End Patch",
+  ].join("\n");
+
+  const patchResult = await applyPatchTool.execute({ patch }, context);
+  assert.equal(patchResult.success, true);
+  assert.match(readFileSync(join(workspace, "src", "math.ts"), "utf8"), /a \+ b/);
+
+  const shellResult = await runShellTool.execute(
+    { command: "node -e \"console.log('ok')\"", timeoutMs: 5_000 },
+    context,
+  );
+  assert.equal(shellResult.success, true);
+  assert.match(shellResult.output, /ok/);
+}

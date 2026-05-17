@@ -1,0 +1,27 @@
+{
+  "name": "code-mind",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "agent": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli/index.ts",
+    "test": "tsc -p tsconfig.test.json && node dist-tests/tests/run-tests.js"
+  },
+  "dependencies": {
+    "ignore": "^7.0.5",
+    "yaml": "^2.8.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^3.12.10",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-tests/
+*.tsbuildinfo
+
+# Agent runtime (sessions, patches, worktrees)
+.agent/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Logs and coverage
+logs/
+*.log
+coverage/
+
+# OS and editor
+.DS_Store
+.idea/
+*.swp
+*~
