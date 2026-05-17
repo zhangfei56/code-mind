@@ -1,4 +1,6 @@
-const ALLOW_COMMANDS = [
+import type { RunMode } from "../shared/types.js";
+
+const SAFE_COMMANDS = [
   "npm test",
   "npm run test",
   "npm run lint",
@@ -7,6 +9,14 @@ const ALLOW_COMMANDS = [
   "pnpm run lint",
   "pytest",
   "cargo test",
+] as const;
+
+const READ_ONLY_COMMANDS = [
+  "git status",
+  "git diff",
+  "pwd",
+  "ls",
+  "ls -la",
 ] as const;
 
 const ASK_COMMAND_PATTERNS = [/^npm install\b/, /^pnpm install\b/, /^git commit\b/];
@@ -19,17 +29,35 @@ const DENY_COMMAND_PATTERNS = [
   /^chmod 777\b/,
 ];
 
+export type ShellPermission = "allow" | "ask" | "deny";
+
+function isKnownCommand(
+  command: string,
+  knownCommands: readonly string[],
+): boolean {
+  return knownCommands.includes(command);
+}
+
 export function getShellPermission(
   command: string,
-): "allow" | "ask" | "deny" {
+  mode: RunMode,
+): ShellPermission {
   const normalized = command.trim();
-
-  if (ALLOW_COMMANDS.includes(normalized as (typeof ALLOW_COMMANDS)[number])) {
-    return "allow";
-  }
 
   if (DENY_COMMAND_PATTERNS.some((pattern) => pattern.test(normalized))) {
     return "deny";
+  }
+
+  if (isKnownCommand(normalized, READ_ONLY_COMMANDS)) {
+    return "allow";
+  }
+
+  if (mode === "read_only") {
+    return "deny";
+  }
+
+  if (isKnownCommand(normalized, SAFE_COMMANDS)) {
+    return "allow";
   }
 
   if (ASK_COMMAND_PATTERNS.some((pattern) => pattern.test(normalized))) {

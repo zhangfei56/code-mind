@@ -1,14 +1,40 @@
 import type { ToolRegistry } from "./registry.js";
 import { applyPatchTool } from "./apply-patch.js";
 import { grepTool } from "./grep.js";
+import {
+  gitChangedFilesTool,
+  gitDiffTool,
+  gitLogTool,
+  gitRestoreFileTool,
+  gitShowTool,
+  gitStatusTool,
+} from "./git-tools.js";
 import { listDirTool } from "./list-dir.js";
+import { lspDiagnosticsTool } from "./lsp-tools.js";
 import { readFileTool } from "./read-file.js";
 import { runShellTool } from "./run-shell.js";
+import {
+  worktreeCleanupTool,
+  worktreeCreateTool,
+  worktreeDiffTool,
+  worktreeStatusTool,
+} from "./worktree-tools.js";
 
 export function registerDefaultTools(registry: ToolRegistry): void {
   registry.register(listDirTool);
   registry.register(readFileTool);
   registry.register(grepTool);
+  registry.register(gitStatusTool);
+  registry.register(gitDiffTool);
+  registry.register(gitLogTool);
+  registry.register(gitChangedFilesTool);
+  registry.register(gitShowTool);
+  registry.register(gitRestoreFileTool);
+  registry.register(lspDiagnosticsTool);
+  registry.register(worktreeCreateTool);
+  registry.register(worktreeStatusTool);
+  registry.register(worktreeDiffTool);
+  registry.register(worktreeCleanupTool);
   registry.register(applyPatchTool);
   registry.register(runShellTool);
 }

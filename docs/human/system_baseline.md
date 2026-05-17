@@ -222,7 +222,7 @@ Runtime 依赖的是 `ModelProvider` 接口，不依赖厂商 SDK。
 - `ToolResult`
 - `AgentResult`
 
-它们的结构在 `contracts.md` 中冻结。
+它们的结构在 `../agent/contracts.md` 中冻结。
 
 ---
 
@@ -416,8 +416,8 @@ Session 最小职责：
 
 按照依赖关系，先后顺序建议如下：
 
-1. 冻结 `contracts.md`
-2. 冻结 `constraints_matrix.md`
+1. 冻结 `../agent/contracts.md`
+2. 冻结 `../agent/constraints_matrix.md`
 3. 初始化单包 CLI 工程
 4. 实现 Session、Config、Workspace Sandbox
 5. 实现 Model Provider 和 Normalizer
@@ -431,11 +431,11 @@ Session 最小职责：
 
 ## 12. 与现有文档关系
 
-- `multi_model_agent_architecture.md`
+- `./multi_model_agent_architecture.md`
   提供正式统一架构基线。
 
 - `agent_phase1_mvp_plan.md`
   提供 Phase 1 的交付范围、工具集合和验收标准。
 
-- `system_baseline.md`
+- `./system_baseline.md`
   负责在统一架构与阶段实现之间建立稳定主干，保证 MVP 与最终平台不是两套系统。

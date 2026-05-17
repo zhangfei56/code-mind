@@ -3,6 +3,7 @@ import type { Tool } from "../shared/types.js";
 import { canReadFile } from "../permissions/file-rules.js";
 import { isIgnoredPath } from "../workspace/ignore.js";
 import { resolvePathInWorkspace } from "../workspace/sandbox-path.js";
+import { sanitizeToolOutput, truncateToolOutput } from "./output.js";
 
 interface ReadFileArgs {
   path: string;
@@ -57,7 +58,9 @@ export const readFileTool: Tool<ReadFileArgs> = {
 
     const target = resolvePathInWorkspace(context.workspaceRoot, args.path);
     const content = await readFile(target, "utf8");
-    const output = withLineNumbers(content, args.startLine, args.endLine);
+    const output = truncateToolOutput(
+      sanitizeToolOutput(withLineNumbers(content, args.startLine, args.endLine)),
+    );
 
     return {
       success: true,

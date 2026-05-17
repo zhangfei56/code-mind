@@ -269,8 +269,8 @@ System Prompt
 
 最稳妥的实现顺序如下：
 
-1. 固定 `system_baseline.md`
-2. 固定 `contracts.md`
+1. 固定 `../human/system_baseline.md`
+2. 固定 `./contracts.md`
 3. 固定本约束矩阵
 4. 先实现 Session、Path Sandbox、Permission Engine
 5. 再实现 Provider 和 Tools

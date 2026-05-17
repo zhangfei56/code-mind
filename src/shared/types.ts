@@ -1,6 +1,7 @@
 export type MessageRole = "system" | "user" | "assistant" | "tool";
 
 export type RunMode =
+  | "plan"
   | "read_only"
   | "suggest"
   | "auto_edit"
@@ -8,6 +9,12 @@ export type RunMode =
   | "sandbox_auto";
 
 export type ToolRiskLevel = "low" | "medium" | "high" | "critical";
+export type EngineeringRiskLevel =
+  | "safe"
+  | "low"
+  | "medium"
+  | "high"
+  | "critical";
 
 export type PermissionDecision =
   | { type: "allow" }
@@ -21,6 +28,8 @@ export type AgentResultStatus =
   | "permission_denied"
   | "user_rejected"
   | "cancelled";
+
+export type SessionStatus = "running" | AgentResultStatus;
 
 export interface UserTask {
   id: string;
@@ -123,9 +132,12 @@ export interface ModelCapabilities {
   jsonSchema: boolean;
   vision: boolean;
   reasoning: boolean;
+  streaming?: boolean;
   maxContextTokens: number;
   maxOutputTokens: number;
   supportsPromptCache: boolean;
+  supportsSystemMessage?: boolean;
+  supportsDeveloperMessage?: boolean;
   supportsComputerUse: boolean;
 }
 
@@ -170,6 +182,12 @@ export interface PermissionRequest {
   metadata?: Record<string, unknown>;
 }
 
+export interface SafetyCheckInput {
+  toolCall: ToolCall;
+  mode: RunMode;
+  workspaceRoot: string;
+}
+
 export interface ContextBuildInput {
   session: AgentSession;
   task: UserTask;
@@ -198,6 +216,317 @@ export interface AgentSession {
   metadata?: Record<string, unknown>;
 }
 
+export interface SessionManifest {
+  id: string;
+  projectPath: string;
+  task: string;
+  mode: RunMode;
+  model: string;
+  status: SessionStatus;
+  createdAt: string;
+  updatedAt: string;
+  maxSteps?: number;
+}
+
+export type TaskStatus =
+  | "created"
+  | "planning"
+  | "awaiting_approval"
+  | "executing"
+  | "verifying"
+  | "reviewing"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "rolled_back"
+  | "needs_user_input";
+
+export interface TaskState {
+  taskId: string;
+  status: TaskStatus;
+  currentStep?: string;
+  planId?: string;
+  updatedAt: string;
+}
+
+export interface PlannedFileChange {
+  path: string;
+  action: "read" | "modify" | "create" | "delete";
+  reason: string;
+  riskLevel: EngineeringRiskLevel;
+}
+
+export interface PlanStep {
+  id: string;
+  title: string;
+  description: string;
+  status: "pending" | "running" | "done" | "failed" | "skipped";
+  expectedFiles?: string[];
+  verification?: string[];
+}
+
+export interface VerificationStep {
+  command?: string;
+  tool?: string;
+  description: string;
+  required: boolean;
+}
+
+export interface RollbackPlan {
+  summary: string;
+  steps: string[];
+}
+
+export interface AgentPlan {
+  id: string;
+  task: string;
+  summary: string;
+  riskLevel: EngineeringRiskLevel;
+  affectedFiles: PlannedFileChange[];
+  steps: PlanStep[];
+  verification: VerificationStep[];
+  rollback?: RollbackPlan;
+}
+
+export interface GitStatusSummary {
+  branch: string;
+  clean: boolean;
+  modified: string[];
+  untracked: string[];
+  deleted: string[];
+}
+
+export interface GitChangedFiles {
+  modified: string[];
+  created: string[];
+  deleted: string[];
+  untracked: string[];
+}
+
+export interface WorktreeInfo {
+  taskId: string;
+  path: string;
+  branchName: string;
+  baseRef: string;
+  createdAt: string;
+}
+
+export interface TestProfile {
+  language: "typescript" | "python" | "rust" | "go" | "unknown";
+  framework?: string;
+  commands: {
+    test?: string;
+    lint?: string;
+    build?: string;
+    typecheck?: string;
+  };
+}
+
+export interface FailedTest {
+  name: string;
+  file?: string;
+  message: string;
+  expected?: string;
+  received?: string;
+}
+
+export interface TestFailureSummary {
+  failedTests: FailedTest[];
+  errorMessages: string[];
+  likelyFiles: string[];
+  rawExcerpt: string;
+}
+
+export interface TestResult {
+  success: boolean;
+  command: string;
+  exitCode: number;
+  durationMs: number;
+  stdout: string;
+  stderr: string;
+  summary: TestFailureSummary;
+}
+
+export interface DiagnosticItem {
+  path: string;
+  line: number;
+  message: string;
+  severity: "error" | "warning";
+}
+
+export interface ReviewIssue {
+  severity: "info" | "warning" | "error";
+  file?: string;
+  line?: number;
+  message: string;
+}
+
+export interface ReviewResult {
+  passed: boolean;
+  issues: ReviewIssue[];
+  suggestions: string[];
+  requiresAnotherIteration: boolean;
+}
+
+export interface VerificationStepResult {
+  name: string;
+  command?: string;
+  success: boolean;
+  exitCode?: number;
+  durationMs?: number;
+  summary: string;
+}
+
+export interface VerificationResult {
+  passed: boolean;
+  steps: VerificationStepResult[];
+  summary: string;
+}
+
+export interface PlannedPatch {
+  id: string;
+  description: string;
+  targetFiles: string[];
+  dependencies: string[];
+  verification?: string[];
+}
+
+export interface PatchPlan {
+  planId: string;
+  patches: PlannedPatch[];
+}
+
+export interface McpServerConfig {
+  transport: "stdio" | "http";
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  url?: string;
+  headers?: Record<string, string>;
+}
+
+export interface HookMatcher {
+  tool?: string;
+}
+
+export type HookEvent =
+  | "SessionStart"
+  | "UserPromptSubmit"
+  | "BeforeModelCall"
+  | "AfterModelCall"
+  | "PreToolUse"
+  | "PostToolUse"
+  | "ToolError"
+  | "BeforePatchApply"
+  | "AfterPatchApply"
+  | "BeforeShellRun"
+  | "AfterShellRun"
+  | "BeforeContextCompact"
+  | "AfterContextCompact"
+  | "BeforeReview"
+  | "AfterReview"
+  | "SessionEnd";
+
+export interface HookDefinition {
+  name: string;
+  type: "command" | "script" | "http";
+  command?: string;
+  path?: string;
+  url?: string;
+  timeoutMs?: number;
+  matcher?: HookMatcher;
+  onFailure?: "continue" | "deny" | "ask";
+}
+
+export interface HookInput {
+  event: HookEvent;
+  sessionId: string;
+  projectPath: string;
+  runMode: RunMode;
+  toolCall?: ToolCall;
+  toolResult?: ToolResult;
+  modelRequest?: ModelRequest;
+  modelResponse?: ModelResponse;
+  patch?: string;
+  diff?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export type HookResult =
+  | { action: "continue" }
+  | { action: "deny"; reason: string }
+  | { action: "ask"; reason: string }
+  | { action: "modify_input"; input: unknown }
+  | { action: "add_context"; context: string }
+  | { action: "replace_result"; result: unknown };
+
+export interface SkillDefinition {
+  name: string;
+  description: string;
+  path: string;
+  content: string;
+  tools?: string[];
+  allowedModes?: RunMode[];
+}
+
+export interface SubagentDefinition {
+  name: string;
+  description: string;
+  model?: string;
+  tools: string[];
+  write?: boolean;
+  shell?: boolean;
+}
+
+export interface CommandDefinition {
+  name: string;
+  description: string;
+  path: string;
+  content: string;
+  mode?: RunMode;
+  skill?: string;
+  tools?: string[];
+}
+
+export interface PluginDefinition {
+  name: string;
+  version: string;
+  description: string;
+  path: string;
+  skills?: string[];
+  agents?: string[];
+  hooks?: Array<{ event: HookEvent; path: string }>;
+  commands?: Array<{ name: string; path: string }>;
+  permissions?: Record<string, unknown>;
+  enabled?: boolean;
+}
+
+export interface CapabilityManifest {
+  models: string[];
+  tools: string[];
+  mcpServers: string[];
+  skills: string[];
+  subagents: string[];
+  hooks: string[];
+  commands: string[];
+  plugins: string[];
+}
+
+export interface ExtensionSettings {
+  mcp?: {
+    servers?: Record<string, McpServerConfig>;
+  };
+  hooks?: Partial<Record<HookEvent, HookDefinition[]>>;
+  extensions?: {
+    plugins?: { enabled?: string[] };
+    skills?: { enabled?: string[] };
+    subagents?: { enabled?: string[] };
+  };
+  commands?: {
+    paths?: string[];
+  };
+}
+
 export interface SessionRecord {
   sessionId: string;
   type:
@@ -212,10 +541,36 @@ export interface SessionRecord {
   payload: Record<string, unknown>;
 }
 
+export interface PermissionDecisionRecord {
+  sessionId: string;
+  toolCallId: string;
+  toolName: string;
+  decision: PermissionDecision["type"];
+  reason: string;
+  createdAt: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AuditRecord {
+  sessionId: string;
+  type:
+    | "model_call"
+    | "hook_execution"
+    | "permission_decision"
+    | "user_approval"
+    | "tool_execution"
+    | "tool_result"
+    | "context_compact";
+  createdAt: string;
+  payload: Record<string, unknown>;
+}
+
 export interface RuntimeInput {
   task: UserTask;
   profile: AgentProfile;
   model: ModelProvider;
+  resumeSessionId?: string;
+  sessionRoot?: string;
 }
 
 export interface ContextManager {

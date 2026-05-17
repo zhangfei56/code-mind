@@ -5,6 +5,14 @@ import YAML from "yaml";
 import type { AgentConfig, ModelConfig } from "./schema.js";
 import { configSchema } from "./schema.js";
 import { ValidationError } from "../shared/errors.js";
+import {
+  DEFAULT_LOCAL_API_KEY,
+  DEFAULT_LOCAL_BASE_URL,
+} from "../model/local.js";
+import {
+  DEFAULT_QWEN_BASE_URL,
+  DEFAULT_QWEN_MODEL,
+} from "../model/qwen.js";
 
 const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 const DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-pro";
@@ -69,19 +77,56 @@ function loadGenericEnvModel(): ModelConfig | null {
   };
 }
 
+function loadQwenEnvModel(): ModelConfig | null {
+  const apiKey = process.env.QWEN_API_KEY ?? process.env.DASHSCOPE_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  return {
+    provider: "qwen",
+    baseUrl: process.env.QWEN_BASE_URL ?? DEFAULT_QWEN_BASE_URL,
+    apiKey,
+    model: process.env.QWEN_MODEL ?? DEFAULT_QWEN_MODEL,
+  };
+}
+
+function loadLocalEnvModel(): ModelConfig | null {
+  const model = process.env.LOCAL_MODEL_NAME;
+  if (!model) {
+    return null;
+  }
+
+  return {
+    provider: "local",
+    baseUrl: process.env.LOCAL_MODEL_BASE_URL ?? DEFAULT_LOCAL_BASE_URL,
+    apiKey: process.env.LOCAL_MODEL_API_KEY ?? DEFAULT_LOCAL_API_KEY,
+    model,
+  };
+}
+
 export function loadConfig(configPath?: string): AgentConfig {
   const explicitPath = configPath ?? join(homedir(), ".agent", "config.yaml");
   const fileConfig = loadConfigFile(explicitPath);
   const envDeepSeek = loadDeepSeekEnvModel();
   const envGeneric = loadGenericEnvModel();
+  const envQwen = loadQwenEnvModel();
+  const envLocal = loadLocalEnvModel();
+  const envModels = {
+    ...(envQwen ? { qwen: envQwen } : {}),
+    ...(envLocal ? { local: envLocal } : {}),
+    ...(envGeneric ? { env: envGeneric } : {}),
+    ...(envDeepSeek ? { deepseek: envDeepSeek } : {}),
+  };
+  const envDefaultModel =
+    Object.keys(envModels)[0] ?? null;
 
-  if (fileConfig && (envDeepSeek || envGeneric)) {
+  if (fileConfig && envDefaultModel) {
     return {
       defaultModel: fileConfig.defaultModel,
       models: {
         ...fileConfig.models,
-        ...(envDeepSeek ? { deepseek: envDeepSeek } : {}),
-        ...(envGeneric ? { env: envGeneric } : {}),
+        ...envModels,
       },
     };
   }
@@ -90,25 +135,14 @@ export function loadConfig(configPath?: string): AgentConfig {
     return fileConfig;
   }
 
-  if (envGeneric) {
+  if (envDefaultModel) {
     return {
-      defaultModel: "env",
-      models: {
-        env: envGeneric,
-      },
-    };
-  }
-
-  if (envDeepSeek) {
-    return {
-      defaultModel: "deepseek",
-      models: {
-        deepseek: envDeepSeek,
-      },
+      defaultModel: envDefaultModel,
+      models: envModels,
     };
   }
 
   throw new ValidationError(
-    "No model configuration found. Set ~/.agent/config.yaml, AGENT_MODEL_* env vars, or DEEPSEEK_API_KEY.",
+    "No model configuration found. Set ~/.agent/config.yaml, AGENT_MODEL_* env vars, DEEPSEEK_API_KEY, QWEN_API_KEY, or LOCAL_MODEL_NAME.",
   );
 }

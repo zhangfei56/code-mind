@@ -1,6 +1,7 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import type { AgentProfile, ToolCall } from "../shared/types.js";
+import { buildPatchPreview } from "../tools/apply-patch.js";
 
 export function createDefaultProfile(): AgentProfile {
   return {
@@ -21,15 +22,24 @@ export async function confirmToolCall(
   toolCall: ToolCall,
   reason: string,
 ): Promise<boolean> {
+  return confirmAction(
+    `${reason}${
+      toolCall.name === "apply_patch" &&
+      typeof toolCall.arguments.patch === "string"
+        ? `\nDiff preview:\n${buildPatchPreview(toolCall.arguments.patch)}\n`
+        : ""
+    }\nApprove tool ${toolCall.name} with arguments ${JSON.stringify(toolCall.arguments)}?`,
+  );
+}
+
+export async function confirmAction(prompt: string): Promise<boolean> {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     return false;
   }
 
   const rl = createInterface({ input, output });
   try {
-    const answer = await rl.question(
-      `${reason}\nApprove tool ${toolCall.name} with arguments ${JSON.stringify(toolCall.arguments)}? [y/N] `,
-    );
+    const answer = await rl.question(`${prompt} [y/N] `);
     return /^y(es)?$/i.test(answer.trim());
   } finally {
     rl.close();

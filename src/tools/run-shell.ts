@@ -1,19 +1,13 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import type { Tool } from "../shared/types.js";
+import { sanitizeToolOutput, truncateToolOutput } from "./output.js";
 
 const execAsync = promisify(exec);
-const OUTPUT_LIMIT = 12_000;
 
 interface RunShellArgs {
   command: string;
   timeoutMs?: number;
-}
-
-function truncateOutput(value: string): string {
-  return value.length <= OUTPUT_LIMIT
-    ? value
-    : `${value.slice(0, OUTPUT_LIMIT)}\n...[truncated]`;
 }
 
 export const runShellTool: Tool<RunShellArgs> = {
@@ -41,8 +35,8 @@ export const runShellTool: Tool<RunShellArgs> = {
         maxBuffer: 1024 * 1024,
       });
 
-      const output = truncateOutput(
-        [result.stdout, result.stderr].filter(Boolean).join("\n"),
+      const output = truncateToolOutput(
+        sanitizeToolOutput([result.stdout, result.stderr].filter(Boolean).join("\n")),
       );
 
       return {
@@ -59,10 +53,12 @@ export const runShellTool: Tool<RunShellArgs> = {
         message?: string;
       };
 
-      const output = truncateOutput(
-        [execError.stdout, execError.stderr, execError.message]
-          .filter(Boolean)
-          .join("\n"),
+      const output = truncateToolOutput(
+        sanitizeToolOutput(
+          [execError.stdout, execError.stderr, execError.message]
+            .filter(Boolean)
+            .join("\n"),
+        ),
       );
 
       const exitCode =

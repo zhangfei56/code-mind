@@ -403,9 +403,9 @@ Phase 1 实际上实现的是统一架构的一个裁剪版：
 
 从现在开始建议这样使用文档：
 
-- `multi_model_agent_architecture.md`
+- `./multi_model_agent_architecture.md`
 作为唯一推荐架构基线
-- `system_baseline.md`
+- `./system_baseline.md`
 作为 MVP/阶段计划的执行基线，但必须服从本文的 8 层正式架构
 
 ---

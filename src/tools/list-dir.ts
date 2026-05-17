@@ -3,6 +3,7 @@ import { join, relative } from "node:path";
 import type { Tool } from "../shared/types.js";
 import { isIgnoredPath } from "../workspace/ignore.js";
 import { resolvePathInWorkspace } from "../workspace/sandbox-path.js";
+import { sanitizeToolOutput, truncateToolOutput } from "./output.js";
 
 interface ListDirArgs {
   path: string;
@@ -59,7 +60,7 @@ export const listDirTool: Tool<ListDirArgs> = {
 
     return {
       success: true,
-      output: lines.join("\n"),
+      output: truncateToolOutput(sanitizeToolOutput(lines.join("\n"))),
       data: { entries: lines },
     };
   },

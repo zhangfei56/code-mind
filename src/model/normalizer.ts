@@ -23,6 +23,17 @@ interface OpenAIChatResponse {
   };
 }
 
+interface JsonActionToolCall {
+  name?: string;
+  arguments?: Record<string, unknown>;
+}
+
+interface JsonActionResponse {
+  tool_calls?: JsonActionToolCall[];
+  toolCall?: JsonActionToolCall;
+  action?: JsonActionToolCall;
+}
+
 function parseToolArguments(raw: string | undefined): Record<string, unknown> {
   if (!raw) {
     return {};
@@ -60,22 +71,53 @@ function normalizeUsage(response: OpenAIChatResponse): TokenUsage | undefined {
   };
 }
 
+function normalizeJsonActionText(text: string): ToolCall[] {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{")) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as JsonActionResponse;
+    const rawToolCalls = parsed.tool_calls ?? [];
+    const single = parsed.toolCall ?? parsed.action;
+    const toolCalls = single ? [...rawToolCalls, single] : rawToolCalls;
+
+    return toolCalls
+      .filter((toolCall) => typeof toolCall.name === "string")
+      .map((toolCall, index) => ({
+        id: `json_action_${index + 1}`,
+        name: toolCall.name as string,
+        arguments:
+          toolCall.arguments && typeof toolCall.arguments === "object"
+            ? toolCall.arguments
+            : {},
+        raw: toolCall,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 export function normalizeOpenAIResponse(raw: unknown): ModelResponse {
   const response = raw as OpenAIChatResponse;
   const firstChoice = response.choices?.[0];
   const message = firstChoice?.message;
   const finishReason = firstChoice?.finish_reason ?? "error";
   const usage = normalizeUsage(response);
+  const text = message?.content ?? "";
+  const toolCalls = normalizeToolCalls(message);
+  const fallbackToolCalls = toolCalls.length === 0 ? normalizeJsonActionText(text) : [];
 
   return {
-    text: message?.content ?? "",
-    toolCalls: normalizeToolCalls(message),
+    text,
+    toolCalls: toolCalls.length > 0 ? toolCalls : fallbackToolCalls,
     finishReason:
       finishReason === "stop" ||
       finishReason === "tool_call" ||
       finishReason === "length"
         ? finishReason
-        : message?.tool_calls?.length
+        : (message?.tool_calls?.length ?? fallbackToolCalls.length) > 0
           ? "tool_call"
           : "error",
     raw,

@@ -8,6 +8,7 @@ import {
   resolvePathInWorkspace,
 } from "../../src/workspace/sandbox-path.js";
 import { findProjectRules } from "../../src/workspace/project-rules.js";
+import { resolveWorkspace } from "../../src/workspace/resolve-workspace.js";
 
 export function runWorkspaceTests(): void {
   const workspace = mkdtempSync(join(tmpdir(), "code-mind-workspace-"));
@@ -27,4 +28,12 @@ export function runWorkspaceTests(): void {
   const rules = findProjectRules(workspace);
   assert.match(rules.content ?? "", /npm test/);
   assert.equal(rules.source, join(workspace, "AGENTS.md"));
+
+  mkdirSync(join(workspace, ".git"));
+  mkdirSync(join(workspace, "packages", "cli"), { recursive: true });
+  const nestedWorkspace = resolveWorkspace(join(workspace, "packages", "cli"));
+  assert.equal(nestedWorkspace, workspace);
+
+  const standalone = mkdtempSync(join(tmpdir(), "code-mind-standalone-"));
+  assert.equal(resolveWorkspace(standalone), standalone);
 }

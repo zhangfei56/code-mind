@@ -16,19 +16,19 @@
 
 本文件与其他文档的关系如下：
 
-- `system_baseline.md`
+- `../human/system_baseline.md`
   定义整体分层和主数据流。
 
-- `multi_model_agent_architecture.md`
+- `../human/multi_model_agent_architecture.md`
   定义正式 8 层架构和依赖方向。
 
-- `contracts.md`
+- `./contracts.md`
   定义核心类型和接口协议。
 
-- `constraints_matrix.md`
+- `./constraints_matrix.md`
   定义实现前必须满足的系统约束。
 
-- `implementation_plan.md`
+- `./implementation_plan.md`
   把上面三份文档落成具体开发计划。
 
 ---
@@ -226,7 +226,7 @@ code-mind/
 
 目标：
 
-- 把 `contracts.md` 中的核心协议落成代码类型
+- 把 `./contracts.md` 中的核心协议落成代码类型
 
 最小产出：
 
@@ -549,7 +549,7 @@ Phase 1 至少应有：
 控制：
 
 - 先写类型，再写实现
-- 每次协议变化先更新 `contracts.md`
+- 每次协议变化先更新 `./contracts.md`
 
 ### 8.2 最大实现风险：`apply_patch`
 

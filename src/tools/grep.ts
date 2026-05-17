@@ -3,6 +3,7 @@ import { join, relative } from "node:path";
 import type { Tool } from "../shared/types.js";
 import { isIgnoredPath } from "../workspace/ignore.js";
 import { resolvePathInWorkspace } from "../workspace/sandbox-path.js";
+import { sanitizeToolOutput, truncateToolOutput } from "./output.js";
 
 interface GrepArgs {
   pattern: string;
@@ -90,7 +91,7 @@ export const grepTool: Tool<GrepArgs> = {
 
     return {
       success: true,
-      output: matches.join("\n"),
+      output: truncateToolOutput(sanitizeToolOutput(matches.join("\n"))),
       data: { matches },
     };
   },

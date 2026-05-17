@@ -1,7 +1,7 @@
 # 架构对齐验证报告
 
 > 版本：v1.0  
-> 基线：`multi_model_agent_architecture.md`  
+> 基线：`./multi_model_agent_architecture.md`  
 > 目的：使用整合后的统一架构，反查其他文档和当前 MVP 实现是否一致，指出一致项、偏差项和修正建议。
 
 ---
@@ -16,8 +16,8 @@
 
 这 3 类偏差是：
 
-1. `system_baseline.md` 原来使用 7 层，不够严格
-2. `implementation_plan.md` 仍保留早期 `pnpm/vitest` 假设，与现状不完全一致
+1. `./system_baseline.md` 原来使用 7 层，不够严格
+2. `../agent/implementation_plan.md` 仍保留早期 `pnpm/vitest` 假设，与现状不完全一致
 3. 当前 MVP 在 `Orchestration` 和 `Infrastructure` 上存在实现塌缩，还没有完全独立成层
 
 这些偏差不阻塞 MVP 成立，但必须在文档层说清楚。
@@ -26,7 +26,7 @@
 
 ## 2. 架构文档对比结论
 
-### 2.1 `multi_model_agent_architecture.md`
+### 2.1 `./multi_model_agent_architecture.md`
 
 优点：
 
@@ -45,7 +45,7 @@
 
 当前项目已经把架构讨论收敛到：
 
-- `multi_model_agent_architecture.md`
+- `./multi_model_agent_architecture.md`
 
 因此它现在既承担正式工程分层基线，也承担核心原则和执行链路基线。
 
@@ -53,7 +53,7 @@
 
 ## 3. 其他文档验证
 
-### 3.1 `system_baseline.md`
+### 3.1 `./system_baseline.md`
 
 状态：`部分通过，已需修正`
 
@@ -72,7 +72,7 @@
 - 继续保留为执行基线文档
 - 但其正式架构引用应指向整合版架构文档
 
-### 3.2 `contracts.md`
+### 3.2 `../agent/contracts.md`
 
 状态：`通过`
 
@@ -85,7 +85,7 @@
 
 - 它对应的是统一架构中的跨层协议，不需要按 8 层结构重写
 
-### 3.3 `constraints_matrix.md`
+### 3.3 `../agent/constraints_matrix.md`
 
 状态：`通过`
 
@@ -94,7 +94,7 @@
 - 权限、路径、上下文、日志、扩展边界与统一架构一致
 - 尤其符合 `Security & Permission` 横向强制边界的要求
 
-### 3.4 `implementation_plan.md`
+### 3.4 `../agent/implementation_plan.md`
 
 状态：`部分通过，含实现时差`
 
@@ -217,14 +217,14 @@
 
 建议以后统一使用：
 
-- `multi_model_agent_architecture.md`
+- `./multi_model_agent_architecture.md`
   作为唯一正式架构基线
 
 ### 5.2 对旧文档的处理
 
 建议：
 
-- 保留 `multi_model_agent_architecture.md` 作为唯一正式架构文档
+- 保留 `./multi_model_agent_architecture.md` 作为唯一正式架构文档
 - 其他文档统一引用本文件
 
 ### 5.3 对 MVP 的判断

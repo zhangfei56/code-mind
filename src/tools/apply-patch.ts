@@ -1,19 +1,20 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import type { Tool } from "../shared/types.js";
 import { resolvePathInWorkspace } from "../workspace/sandbox-path.js";
+import { truncateToolOutput } from "./output.js";
 
 interface ApplyPatchArgs {
   patch: string;
 }
 
-interface ParsedPatch {
+export interface ParsedPatch {
   filePath: string;
   oldText: string;
   newText: string;
 }
 
-function parsePatch(patch: string): ParsedPatch {
+export function parsePatch(patch: string): ParsedPatch {
   const lines = patch.split("\n");
   const fileLine = lines.find((line) => line.startsWith("*** Update File: "));
   if (!fileLine) {
@@ -33,6 +34,10 @@ function parsePatch(patch: string): ParsedPatch {
     oldText: oldLines.join("\n"),
     newText: newLines.join("\n"),
   };
+}
+
+export function buildPatchPreview(patch: string): string {
+  return truncateToolOutput(patch, { maxChars: 4000 });
 }
 
 export const applyPatchTool: Tool<ApplyPatchArgs> = {
@@ -68,27 +73,42 @@ export const applyPatchTool: Tool<ApplyPatchArgs> = {
       }
 
       const after = before.replace(parsed.oldText, parsed.newText);
-      await mkdir(join(context.workspaceRoot, ".agent", "sessions", context.sessionId, "patches"), {
-        recursive: true,
-      });
+      const sessionRoot = join(
+        context.workspaceRoot,
+        ".agent",
+        "sessions",
+        context.sessionId,
+      );
+      const patchesDir = join(sessionRoot, "patches");
+      const diffsDir = join(sessionRoot, "diffs");
+      const diffId = `${Date.now()}`;
+      await mkdir(patchesDir, { recursive: true });
+      await mkdir(diffsDir, { recursive: true });
       await writeFile(filePath, after, "utf8");
       await writeFile(
-        join(
-          context.workspaceRoot,
-          ".agent",
-          "sessions",
-          context.sessionId,
-          "patches",
-          `${Date.now()}.patch`,
-        ),
+        join(patchesDir, `${diffId}.patch`),
         args.patch,
         "utf8",
       );
+      const diffPath = join(diffsDir, `${diffId}.diff`);
+      await writeFile(diffPath, args.patch, "utf8");
 
       return {
         success: true,
-        output: `Patch applied to ${parsed.filePath}`,
+        output: `Patch applied to ${parsed.filePath}\n${buildPatchPreview(args.patch)}`,
         data: { path: parsed.filePath },
+        artifacts: [
+          {
+            type: "diff",
+            path: diffPath,
+            description: `Applied diff for ${parsed.filePath}`,
+          },
+        ],
+        metadata: {
+          filePath: parsed.filePath,
+          diffPath,
+          diffPreview: buildPatchPreview(args.patch),
+        },
       };
     } catch (error) {
       return {

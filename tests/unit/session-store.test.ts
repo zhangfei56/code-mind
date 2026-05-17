@@ -29,6 +29,11 @@ export async function runSessionStoreTests(): Promise<void> {
     createSessionRecord(session.id, "user_message", { content: task.text }),
   );
   await store.saveSummary(session.id, "# Summary\n\nDone.");
+  await store.saveCurrentSummary(session.id, "# Current Summary\n\nWorking.");
+  await store.updateManifest(session.id, {
+    model: "local",
+    status: "success",
+  });
 
   const messages = readFileSync(
     join(store.getSessionDir(session.id), "messages.jsonl"),
@@ -38,7 +43,18 @@ export async function runSessionStoreTests(): Promise<void> {
     join(store.getSessionDir(session.id), "summary.md"),
     "utf8",
   );
+  const currentSummary = readFileSync(
+    join(store.getSessionDir(session.id), "current-summary.md"),
+    "utf8",
+  );
+  const manifest = readFileSync(
+    join(store.getSessionDir(session.id), "session.json"),
+    "utf8",
+  );
 
   assert.match(messages, /修复测试失败/);
   assert.match(summary, /Done\./);
+  assert.match(currentSummary, /Working\./);
+  assert.match(manifest, /"status": "success"/);
+  assert.match(manifest, /"model": "local"/);
 }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { applyPatchTool } from "../../src/tools/apply-patch.js";
@@ -37,6 +37,16 @@ export async function runHighRiskToolTests(): Promise<void> {
   const patchResult = await applyPatchTool.execute({ patch }, context);
   assert.equal(patchResult.success, true);
   assert.match(readFileSync(join(workspace, "src", "math.ts"), "utf8"), /a \+ b/);
+  assert.match(patchResult.output, /Diff preview|Begin Patch|return a \+ b/);
+  const diffsDir = join(
+    workspace,
+    ".agent",
+    "sessions",
+    context.sessionId,
+    "diffs",
+  );
+  assert.equal(existsSync(diffsDir), true);
+  assert.equal(readdirSync(diffsDir).length > 0, true);
 
   const shellResult = await runShellTool.execute(
     { command: "node -e \"console.log('ok')\"", timeoutMs: 5_000 },
