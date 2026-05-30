@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "paths": {
+      "@code-mind/core": ["../core/src/index.ts"],
+      "@code-mind/core/*": ["../core/src/*"],
+      "@code-mind/execution": ["../execution/src/index.ts"],
+      "@code-mind/session": ["../session/src/index.ts"],
+      "@code-mind/shared": ["../shared/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../execution" },
+    { "path": "../session" },
+    { "path": "../shared" }
+  ]
+}

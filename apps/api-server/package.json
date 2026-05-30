@@ -1,0 +1,32 @@
+{
+  "name": "@code-mind/api-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@code-mind/agent-composition": "workspace:*",
+    "@code-mind/config": "workspace:*",
+    "@code-mind/core": "workspace:*",
+    "@code-mind/models": "workspace:*",
+    "@code-mind/server-runtime": "workspace:*",
+    "@code-mind/session": "workspace:*",
+    "@code-mind/shared": "workspace:*",
+    "@code-mind/workspace": "workspace:*",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1"
+  }
+}

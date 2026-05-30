@@ -2,16 +2,16 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { applyPatchTool } from "../../src/tools/apply-patch.js";
-import { runShellTool } from "../../src/tools/run-shell.js";
-import type { ToolContext } from "../../src/shared/types.js";
+import { applyPatchTool } from "@code-mind/execution";
+import { runShellTool } from "@code-mind/execution";
+import type { ToolContext } from "@code-mind/shared";
 
 function createContext(workspaceRoot: string): ToolContext {
   return {
     sessionId: "session_high_risk",
     workspaceRoot,
     cwd: workspaceRoot,
-    mode: "auto_edit",
+    mode: "agent",
   };
 }
 

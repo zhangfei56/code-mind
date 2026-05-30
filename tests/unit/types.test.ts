@@ -4,7 +4,7 @@ import type {
   PermissionDecision,
   ToolCall,
   ToolResult,
-} from "../../src/shared/types.js";
+} from "@code-mind/shared";
 
 export function runTypeContractTests(): void {
   const decision: PermissionDecision = {

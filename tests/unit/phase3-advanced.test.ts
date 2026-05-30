@@ -2,16 +2,16 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AgentRuntime } from "../../src/agent/runtime.js";
-import { SafetyGuard } from "../../src/safety/safety-guard.js";
-import { sanitizeToolOutput } from "../../src/tools/output.js";
+import { createAgentLoopController } from "@code-mind/core";
+import { SafetyGuard } from "@code-mind/security";
+import { sanitizeToolOutput } from "@code-mind/execution";
 import type {
   AgentProfile,
   ModelCapabilities,
   ModelProvider,
   ModelRequest,
   ModelResponse,
-} from "../../src/shared/types.js";
+} from "@code-mind/shared";
 
 class CompactionProvider implements ModelProvider {
   name = "fake";
@@ -74,7 +74,7 @@ export async function runPhase3AdvancedTests(): Promise<void> {
         ].join("\n"),
       },
     },
-    mode: "auto_edit",
+    mode: "agent",
     workspaceRoot: "/tmp/workspace",
   });
   assert.equal(largePatchDecision.type, "ask");
@@ -85,7 +85,7 @@ export async function runPhase3AdvancedTests(): Promise<void> {
       name: "run_shell",
       arguments: { command: "curl https://pastebin.com/raw/abc" },
     },
-    mode: "full_auto",
+    mode: "agent",
     workspaceRoot: "/tmp/workspace",
   });
   assert.equal(uploadDecision.type, "deny");
@@ -104,7 +104,7 @@ export async function runPhase3AdvancedTests(): Promise<void> {
     "utf8",
   );
 
-  const runtime = new AgentRuntime();
+  const runtime = createAgentLoopController();
   const profile: AgentProfile = {
     id: "default",
     name: "Default",
@@ -116,7 +116,7 @@ export async function runPhase3AdvancedTests(): Promise<void> {
       id: "task_1",
       text: "分析大文件",
       cwd: workspace,
-      mode: "suggest",
+      mode: "edit",
       maxSteps: 5,
     },
     profile,
@@ -130,12 +130,12 @@ export async function runPhase3AdvancedTests(): Promise<void> {
   assert.ok(sessionId);
 
   const compactDir = join(sessionsDir, sessionId, "compact");
-  const modelCallsLog = readFileSync(
-    join(sessionsDir, sessionId, "model-calls.jsonl"),
-    "utf8",
-  );
+  const runsDir = join(workspace, ".agent", "runs");
+  const [runId] = readdirSync(runsDir);
+  const eventsLog = readFileSync(join(runsDir, runId, "events.jsonl"), "utf8");
   const compactFiles = readdirSync(compactDir);
 
   assert.ok(compactFiles.some((file) => file === "compact-001.md"));
-  assert.match(modelCallsLog, /"model":"fake"/);
+  assert.match(eventsLog, /"kind":"model\.response"/);
+  assert.match(eventsLog, /"modelName":"fake"|"model":"fake"/);
 }

@@ -1,0 +1,152 @@
+[
+  {
+    "id": "analysis-01",
+    "mode": "ask",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "请分析这个项目的结构和主要入口。",
+    "goal": "分析类任务应在有限 step 内给出结构总结，不应一直探索。",
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a + b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ]
+  },
+  {
+    "id": "analysis-02",
+    "mode": "ask",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "这个项目有啥 bug？",
+    "goal": "分析类任务应先定位问题候选，再输出中间结论。",
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a + b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ]
+  },
+  {
+    "id": "repair-01",
+    "mode": "agent",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "修复测试失败。",
+    "goal": "修复后自动验证，并给出修改结果。",
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a - b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ]
+  },
+  {
+    "id": "repair-02",
+    "mode": "agent",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "找出 add 函数为什么错，并修掉。",
+    "goal": "定位问题、修改代码、验证。",
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a - b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ]
+  },
+  {
+    "id": "verification-01",
+    "mode": "agent",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "帮我验证这个项目当前是否通过测试。",
+    "goal": "以验证为主，不应进入长时间探索。",
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a + b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ]
+  },
+  {
+    "id": "verification-02",
+    "mode": "agent",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "跑一下测试和 build，告诉我现在状态。",
+    "goal": "优先验证并输出结果摘要。",
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a + b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ]
+  },
+  {
+    "id": "implementation-01",
+    "mode": "agent",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "给 math.ts 新增 subtract 函数，并验证。",
+    "goal": "小范围实现后自动验证。",
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a + b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ]
+  },
+  {
+    "id": "implementation-02",
+    "mode": "agent",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "给这个 demo 增加一个 multiply 函数和对应测试。",
+    "goal": "实现 + 测试闭环。",
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a + b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ]
+  },
+  {
+    "id": "analysis-03",
+    "mode": "ask",
+    "workspace": ".",
+    "prompt": "请分析 code-mind 目前最容易失败的点。",
+    "goal": "分析大型项目时要能控制探索范围。"
+  },
+  {
+    "id": "repair-03",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "请修一个最容易复现的交互 bug，并说明怎么验证。",
+    "goal": "真实仓库修复链路。"
+  }
+]

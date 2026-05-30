@@ -2,9 +2,14 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AgentRuntime } from "../../src/agent/runtime.js";
-import { FileSessionStore } from "../../src/session/session-store.js";
-import { createSessionRecord } from "../../src/session/session-record.js";
+import {
+  createAgentLoopController,
+  messageAssistantEvent,
+  messageUserEvent,
+  toolCallEvent,
+  toolResultEvent,
+} from "@code-mind/core";
+import { createTestSessionStore } from "./helpers/session-store.js";
 import type {
   AgentProfile,
   ModelCapabilities,
@@ -12,14 +17,17 @@ import type {
   ModelRequest,
   ModelResponse,
   UserTask,
-} from "../../src/shared/types.js";
+} from "@code-mind/shared";
+import { seedSessionTranscript } from "./helpers/seed-session-transcript.js";
 
 class ResumeProvider implements ModelProvider {
   name = "fake-resume";
 
   async chat(request: ModelRequest): Promise<ModelResponse> {
     const toolMessages = request.messages.filter((message) => message.role === "tool");
+    const userMessages = request.messages.filter((message) => message.role === "user");
     assert.ok(toolMessages.length >= 1);
+    assert.match(userMessages[userMessages.length - 1]?.content ?? "", /继续修复并总结现状/);
     assert.match(toolMessages[toolMessages.length - 1]?.content ?? "", /1 export function add/);
 
     return {
@@ -54,12 +62,12 @@ export async function runResumeTests(): Promise<void> {
     "utf8",
   );
 
-  const store = new FileSessionStore(workspace);
+  const store = createTestSessionStore(workspace);
   const task: UserTask = {
     id: "task_1",
     text: "修复测试失败",
     cwd: workspace,
-    mode: "suggest",
+    mode: "edit",
     maxSteps: 2,
   };
   const profile: AgentProfile = {
@@ -69,36 +77,38 @@ export async function runResumeTests(): Promise<void> {
   };
   const session = await store.create(task, profile);
 
-  await store.appendRecord(
-    createSessionRecord(session.id, "user_message", { content: task.text }),
-  );
-  await store.appendRecord(
-    createSessionRecord(session.id, "assistant_message", { content: "" }),
-  );
-  await store.appendRecord(
-    createSessionRecord(session.id, "tool_call", {
-      id: "call_read",
-      name: "read_file",
-      arguments: { path: "src/math.ts" },
-    }),
-  );
-  await store.appendRecord(
-    createSessionRecord(session.id, "tool_result", {
-      toolCallId: "call_read",
+  const readCall = {
+    id: "call_read",
+    name: "read_file",
+    arguments: { path: "src/math.ts" },
+  };
+
+  await seedSessionTranscript(workspace, session.id, [
+    messageUserEvent(task.text),
+    messageAssistantEvent(""),
+    toolCallEvent(1, task.maxSteps, readCall),
+    toolResultEvent({
+      step: 1,
+      maxSteps: task.maxSteps,
+      toolCall: readCall,
       success: true,
-      output: "1 export function add(a: number, b: number): number {\n2   return a - b;\n3 }",
+      output:
+        "1 export function add(a: number, b: number): number {\n2   return a - b;\n3 }",
+      outputPreview:
+        "1 export function add(a: number, b: number): number {\n2   return a - b;\n3 }",
     }),
-  );
+  ]);
+
   await store.updateManifest(session.id, {
     model: "fake-resume",
     status: "stopped_by_limit",
   });
 
-  const runtime = new AgentRuntime();
+  const runtime = createAgentLoopController();
   const result = await runtime.run({
     task: {
       id: "task_resume",
-      text: task.text,
+      text: "继续修复并总结现状",
       cwd: workspace,
       mode: task.mode,
       maxSteps: 3,
@@ -121,7 +131,8 @@ export async function runResumeTests(): Promise<void> {
   );
   const sessions = readdirSync(join(workspace, ".agent", "sessions"));
 
-  assert.equal(sessions.length, 1);
+  assert.ok(sessions.includes(`${session.id}.json`));
+  assert.ok(sessions.includes(session.id));
   assert.match(manifest, /"status": "success"/);
   assert.match(summary, /Resumed session/);
 }

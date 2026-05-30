@@ -1,9 +1,45 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "rootDir": ".",
-    "outDir": "dist-tests"
+    "outDir": "dist-tests",
+    "composite": false,
+    "paths": {
+      "@code-mind/shared": ["./packages/shared/src/index.ts"],
+      "@code-mind/shared/*": ["./packages/shared/src/*"],
+      "@code-mind/config": ["./packages/config/src/index.ts"],
+      "@code-mind/config/*": ["./packages/config/src/*"],
+      "@code-mind/capabilities": ["./packages/capabilities/src/index.ts"],
+      "@code-mind/capabilities/*": ["./packages/capabilities/src/*"],
+      "@code-mind/models": ["./packages/models/src/index.ts"],
+      "@code-mind/models/*": ["./packages/models/src/*"],
+      "@code-mind/context": ["./packages/context/src/index.ts"],
+      "@code-mind/context/*": ["./packages/context/src/*"],
+      "@code-mind/execution": ["./packages/execution/src/index.ts"],
+      "@code-mind/execution/*": ["./packages/execution/src/*"],
+      "@code-mind/workspace": ["./packages/workspace/src/index.ts"],
+      "@code-mind/workspace/*": ["./packages/workspace/src/*"],
+      "@code-mind/security": ["./packages/security/src/index.ts"],
+      "@code-mind/security/*": ["./packages/security/src/*"],
+      "@code-mind/api-server": ["./apps/api-server/src/index.ts"],
+      "@code-mind/core": ["./packages/core/src/index.ts"],
+      "@code-mind/agent-composition": ["./packages/agent-composition/src/index.ts"],
+      "@code-mind/memory": ["./packages/memory/src/index.ts"],
+      "@code-mind/core/*": ["./packages/core/src/*"],
+      "@code-mind/observability": ["./packages/observability/src/index.ts"],
+      "@code-mind/observability/*": ["./packages/observability/src/*"],
+      "@code-mind/server-runtime": ["./packages/server-runtime/src/index.ts"],
+      "@code-mind/server-runtime/*": ["./packages/server-runtime/src/*"],
+      "@code-mind/session": ["./packages/session/src/index.ts"],
+      "@code-mind/session/*": ["./packages/session/src/*"],
+      "@code-mind/verify": ["./packages/verify/src/index.ts"],
+      "@code-mind/verify/*": ["./packages/verify/src/*"]
+    }
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts"],
-  "exclude": ["dist", "node_modules"]
+  "include": [
+    "packages/**/src/**/*.ts",
+    "apps/**/src/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "exclude": ["dist", "dist-tests", "node_modules", "**/dist/**"]
 }

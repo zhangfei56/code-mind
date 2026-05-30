@@ -4,24 +4,53 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "bin": {
-    "agent": "./dist/cli/index.js"
+    "code-mind": "./apps/cli/dist/cli/index.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsx src/cli/index.ts",
-    "test": "tsc -p tsconfig.test.json && node dist-tests/tests/run-tests.js"
+    "build": "pnpm -r run build",
+    "dev": "tsx apps/cli/src/cli/index.ts",
+    "test": "pnpm build && node --import tsx/esm tests/run-tests.ts",
+    "test:display": "tsx scripts/mock-display-run.ts",
+    "web": "pnpm --filter @code-mind/api-server start",
+    "benchmark:p0": "tsx apps/cli/src/benchmarks/run-p0.ts",
+    "benchmark:repo-root": "BENCHMARK_WORKLOAD=repo-root-workload.json tsx apps/cli/src/benchmarks/run-p0.ts",
+    "mock:display": "tsx scripts/mock-display-run.ts",
+    "mock:cli": "tsx apps/cli/src/cli/index.ts mock run \"explain this repo\" --cwd .",
+    "mock:cli:verbose": "tsx apps/cli/src/cli/index.ts mock run \"explain this repo\" --cwd . --verbose",
+    "mock:cli:approval": "tsx apps/cli/src/cli/index.ts mock run --scenario approval --cwd .",
+    "mock:cli:fail": "tsx apps/cli/src/cli/index.ts mock run --scenario shell-failure --cwd .",
+    "mock:serve": "tsx scripts/mock-display-serve.ts"
   },
   "dependencies": {
-    "ignore": "^7.0.5",
+    "@code-mind/agent-composition": "workspace:*",
+    "@code-mind/api-server": "workspace:*",
+    "@code-mind/capabilities": "workspace:*",
+    "@code-mind/cli": "workspace:*",
+    "@code-mind/config": "workspace:*",
+    "@code-mind/context": "workspace:*",
+    "@code-mind/core": "workspace:*",
+    "@code-mind/execution": "workspace:*",
+    "@code-mind/memory": "workspace:*",
+    "@code-mind/models": "workspace:*",
+    "@code-mind/observability": "workspace:*",
+    "@code-mind/server-runtime": "workspace:*",
+    "@code-mind/session": "workspace:*",
+    "@code-mind/security": "workspace:*",
+    "@code-mind/shared": "workspace:*",
+    "@code-mind/workspace": "workspace:*",
+    "@code-mind/verify": "workspace:*",
     "yaml": "^2.8.1",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "ignore": "^7.0.5"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "tsx": "^3.12.10",
-    "typescript": "^5.9.3"
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.9.3",
+    "ws": "^8.18.3"
   }
 }

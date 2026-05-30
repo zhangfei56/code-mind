@@ -1,0 +1,35 @@
+{
+  "name": "@code-mind/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "code-mind": "./dist/cli/index.js"
+  },
+  "main": "./dist/cli/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli/index.ts"
+  },
+  "dependencies": {
+    "@code-mind/agent-composition": "workspace:*",
+    "@code-mind/api-server": "workspace:*",
+    "@code-mind/capabilities": "workspace:*",
+    "@code-mind/config": "workspace:*",
+    "@code-mind/core": "workspace:*",
+    "@code-mind/execution": "workspace:*",
+    "@code-mind/models": "workspace:*",
+    "@code-mind/session": "workspace:*",
+    "@code-mind/shared": "workspace:*",
+    "@code-mind/workspace": "workspace:*",
+    "@code-mind/verify": "workspace:*",
+    "@types/blessed": "^0.1.27",
+    "blessed": "^0.1.81",
+    "yaml": "^2.8.1",
+    "yargs": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/yargs": "^17.0.35",
+    "tsx": "^4.19.4"
+  }
+}

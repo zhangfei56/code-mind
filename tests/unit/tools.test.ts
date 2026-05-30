@@ -2,19 +2,19 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { clearWorkspaceIgnoreCache } from "../../src/workspace/ignore.js";
-import { grepTool } from "../../src/tools/grep.js";
-import { listDirTool } from "../../src/tools/list-dir.js";
-import { readFileTool } from "../../src/tools/read-file.js";
-import { ToolRegistry } from "../../src/tools/registry.js";
-import type { ToolContext } from "../../src/shared/types.js";
+import { clearWorkspaceIgnoreCache } from "@code-mind/workspace";
+import { grepTool } from "@code-mind/execution";
+import { listDirTool } from "@code-mind/execution";
+import { readFileTool } from "@code-mind/execution";
+import { ToolRegistry } from "@code-mind/execution";
+import type { ToolContext } from "@code-mind/shared";
 
 function createContext(workspaceRoot: string): ToolContext {
   return {
     sessionId: "session_1",
     workspaceRoot,
     cwd: workspaceRoot,
-    mode: "suggest",
+    mode: "edit",
   };
 }
 
@@ -73,4 +73,22 @@ export async function runToolTests(): Promise<void> {
     context,
   );
   assert.equal(registryResult.success, true);
+
+  const escapedPathResult = await registry.execute(
+    {
+      id: "call_2",
+      name: "read_file",
+      arguments: { path: "/tmp/outside-workspace.txt" },
+    },
+    context,
+  );
+  assert.equal(escapedPathResult.success, false);
+  assert.match(escapedPathResult.error ?? "", /Path escapes workspace/);
+
+  const askSchemas = registry.getSchemasForMode("ask");
+  assert.ok(askSchemas.some((schema) => schema.name === "read_file"));
+  assert.ok(!askSchemas.some((schema) => schema.name === "apply_patch"));
+
+  const agentSchemas = registry.getSchemasForMode("agent");
+  assert.ok(agentSchemas.some((schema) => schema.name === "read_file"));
 }

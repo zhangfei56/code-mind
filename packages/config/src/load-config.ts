@@ -1,0 +1,211 @@
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import YAML from "yaml";
+import type { AgentConfig, AgentLogLevel, ModelConfig } from "./schema.js";
+import { configSchema } from "./schema.js";
+import {
+  ValidationError,
+} from "@code-mind/shared";
+import {
+  DEFAULT_LOCAL_API_KEY,
+  DEFAULT_LOCAL_BASE_URL,
+  DEFAULT_QWEN_BASE_URL,
+  DEFAULT_QWEN_MODEL,
+} from "./model-defaults.js";
+
+const DEFAULT_DEEPSEEK_BASE_URL = "https://api.deepseek.com";
+const DEFAULT_DEEPSEEK_MODEL = "deepseek-v4-pro";
+
+function loadConfigFile(configPath: string): AgentConfig | null {
+  if (!existsSync(configPath)) {
+    return null;
+  }
+
+  const raw = readFileSync(configPath, "utf8");
+  const parsed = YAML.parse(raw);
+  const normalized = parsed as Record<string, unknown>;
+  const logging = (normalized.logging ?? {}) as Record<string, unknown>;
+
+  const candidate = {
+    defaultModel: normalized.default_model,
+    models: Object.fromEntries(
+      Object.entries((normalized.models ?? {}) as Record<string, Record<string, unknown>>).map(
+        ([key, value]) => [
+          key,
+          {
+            provider: value.provider,
+            baseUrl: value.base_url,
+            apiKey: value.api_key,
+            model: value.model,
+            ...(value.thinking === undefined ? {} : { thinking: value.thinking }),
+          },
+        ],
+      ),
+    ),
+    logging: {
+      level: logging.level,
+    },
+  };
+
+  return configSchema.parse(candidate);
+}
+
+function resolveConfiguredLogLevel(value: string | undefined): AgentLogLevel | undefined {
+  switch (value?.trim().toLowerCase()) {
+    case "error":
+    case "warn":
+    case "info":
+    case "debug":
+      return value.trim().toLowerCase() as AgentLogLevel;
+    default:
+      return undefined;
+  }
+}
+
+function applyConfiguredLogLevel(fileLevel?: AgentLogLevel): void {
+  if (!process.env.AGENT_LOG_LEVEL) {
+    process.env.AGENT_LOG_LEVEL = fileLevel ?? "info";
+  }
+}
+
+function resolveEffectiveLogLevel(fileLevel?: AgentLogLevel): AgentLogLevel {
+  return resolveConfiguredLogLevel(process.env.AGENT_LOG_LEVEL) ?? fileLevel ?? "info";
+}
+
+function loadDeepSeekEnvModel(): ModelConfig | null {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  return {
+    provider: "openai-compatible",
+    baseUrl: process.env.DEEPSEEK_BASE_URL ?? DEFAULT_DEEPSEEK_BASE_URL,
+    apiKey,
+    model: process.env.DEEPSEEK_MODEL ?? DEFAULT_DEEPSEEK_MODEL,
+  };
+}
+
+function loadGenericEnvModel(): ModelConfig | null {
+  const baseUrl = process.env.AGENT_MODEL_BASE_URL;
+  const apiKey = process.env.AGENT_MODEL_API_KEY;
+  const model = process.env.AGENT_MODEL_NAME;
+
+  if (!baseUrl || !apiKey || !model) {
+    return null;
+  }
+
+  return {
+    provider: "openai-compatible",
+    baseUrl,
+    apiKey,
+    model,
+  };
+}
+
+function loadQwenEnvModel(): ModelConfig | null {
+  const apiKey = process.env.QWEN_API_KEY ?? process.env.DASHSCOPE_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  return {
+    provider: "qwen",
+    baseUrl: process.env.QWEN_BASE_URL ?? DEFAULT_QWEN_BASE_URL,
+    apiKey,
+    model: process.env.QWEN_MODEL ?? DEFAULT_QWEN_MODEL,
+  };
+}
+
+function loadLocalEnvModel(): ModelConfig | null {
+  const model = process.env.LOCAL_MODEL_NAME;
+  if (!model) {
+    return null;
+  }
+
+  return {
+    provider: "local",
+    baseUrl: process.env.LOCAL_MODEL_BASE_URL ?? DEFAULT_LOCAL_BASE_URL,
+    apiKey: process.env.LOCAL_MODEL_API_KEY ?? DEFAULT_LOCAL_API_KEY,
+    model,
+  };
+}
+
+export function loadConfig(configPath?: string): AgentConfig {
+  const explicitPath = configPath ?? join(homedir(), ".agent", "config.yaml");
+  const fileConfig = loadConfigFile(explicitPath);
+  applyConfiguredLogLevel(fileConfig?.logging.level);
+  const envDeepSeek = loadDeepSeekEnvModel();
+  const envGeneric = loadGenericEnvModel();
+  const envQwen = loadQwenEnvModel();
+  const envLocal = loadLocalEnvModel();
+  const envModels = {
+    ...(envQwen ? { qwen: envQwen } : {}),
+    ...(envLocal ? { local: envLocal } : {}),
+    ...(envGeneric ? { env: envGeneric } : {}),
+    ...(envDeepSeek ? { deepseek: envDeepSeek } : {}),
+  };
+  const envDefaultModel =
+    Object.keys(envModels)[0] ?? null;
+
+  if (fileConfig && envDefaultModel) {
+    return {
+      defaultModel: fileConfig.defaultModel,
+      models: {
+        ...fileConfig.models,
+        ...envModels,
+      },
+      logging: {
+        level: resolveEffectiveLogLevel(fileConfig.logging.level),
+      },
+    };
+  }
+
+  if (fileConfig) {
+    return {
+      ...fileConfig,
+      logging: {
+        level: resolveEffectiveLogLevel(fileConfig.logging.level),
+      },
+    };
+  }
+
+  if (envDefaultModel) {
+    return {
+      defaultModel: envDefaultModel,
+      models: envModels,
+      logging: {
+        level: resolveEffectiveLogLevel(),
+      },
+    };
+  }
+
+  throw new ValidationError(
+    "No model configuration found. Set ~/.agent/config.yaml, AGENT_MODEL_* env vars, DEEPSEEK_API_KEY, QWEN_API_KEY, or LOCAL_MODEL_NAME.",
+  );
+}
+
+export function loadConfigForModel(
+  modelName?: string,
+  configPath?: string,
+): AgentConfig {
+  try {
+    return loadConfig(configPath);
+  } catch (error) {
+    if (
+      error instanceof ValidationError &&
+      typeof modelName === "string" &&
+      modelName.includes(":")
+    ) {
+      return {
+        defaultModel: modelName,
+        models: {},
+        logging: {
+          level: resolveEffectiveLogLevel(),
+        },
+      };
+    }
+    throw error;
+  }
+}

@@ -2,15 +2,15 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AgentRuntime } from "../../src/agent/runtime.js";
-import { truncateToolOutput } from "../../src/tools/output.js";
+import { createAgentLoopController } from "@code-mind/core";
+import { truncateToolOutput } from "@code-mind/execution";
 import type {
   AgentProfile,
   ModelCapabilities,
   ModelProvider,
   ModelRequest,
   ModelResponse,
-} from "../../src/shared/types.js";
+} from "@code-mind/shared";
 
 class AskPatchProvider implements ModelProvider {
   name = "fake";
@@ -76,10 +76,10 @@ export async function runPhase3FoundationTests(): Promise<void> {
     "utf8",
   );
 
-  const runtime = new AgentRuntime({
+  const runtime = createAgentLoopController({
     permissionPrompter: {
       async approve() {
-        return false;
+        return { approved: false, approvalId: "approval_1" };
       },
     },
   });
@@ -94,27 +94,24 @@ export async function runPhase3FoundationTests(): Promise<void> {
       id: "task_1",
       text: "修复测试失败",
       cwd: workspace,
-      mode: "suggest",
+      mode: "edit",
       maxSteps: 3,
     },
     profile,
     model: new AskPatchProvider(),
   });
 
-  const sessionsDir = join(workspace, ".agent", "sessions");
-  const [sessionId] = readdirSync(sessionsDir);
-  assert.ok(sessionId);
+  const runsDir = join(workspace, ".agent", "runs");
+  const [runId] = readdirSync(runsDir);
+  assert.ok(runId);
 
-  const permissionLog = readFileSync(
-    join(sessionsDir, sessionId, "permission-decisions.jsonl"),
-    "utf8",
-  );
-  const auditLog = readFileSync(
-    join(sessionsDir, sessionId, "audit.jsonl"),
-    "utf8",
-  );
+  const eventsLog = readFileSync(join(runsDir, runId, "events.jsonl"), "utf8");
 
-  assert.match(permissionLog, /"decision":"ask"/);
-  assert.match(auditLog, /"type":"permission_decision"/);
-  assert.match(auditLog, /"type":"user_approval"/);
+  assert.match(eventsLog, /"kind":"permission\.decision"/);
+  assert.match(eventsLog, /"decision":"ask"/);
+  assert.match(eventsLog, /apply_patch/);
+  assert.ok(
+    eventsLog.includes('"kind":"approval.requested"') ||
+      eventsLog.includes('"kind":"approval.resolved"'),
+  );
 }

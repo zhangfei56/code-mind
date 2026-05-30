@@ -1,0 +1,34 @@
+[
+  {
+    "id": "repo-analysis-01",
+    "mode": "ask",
+    "workspace": ".",
+    "prompt": "请只基于 interactive 和 runtime 相关代码，分析 code-mind 最容易导致 stopped_by_limit 的点。",
+    "goal": "repo-root 分析任务应快速收敛到少数几个关键文件，而不是横向扫描全仓库。",
+    "maxSteps": 12
+  },
+  {
+    "id": "repo-analysis-02",
+    "mode": "ask",
+    "workspace": ".",
+    "prompt": "请只基于 model 和 runtime 相关代码，分析 DeepSeek 最容易导致假成功或超时的点。",
+    "goal": "repo-root 分析任务应给出模型链路里的 top 问题点和文件证据。",
+    "maxSteps": 12
+  },
+  {
+    "id": "repo-repair-01",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "请修一个 interactive 模式里最容易复现的 stopped_by_limit 体验问题，并说明怎么验证。",
+    "goal": "repo-root 修复任务应尽快收敛到 interactive/runtime 的一个具体问题，完成修改并说明验证方式。",
+    "maxSteps": 12
+  },
+  {
+    "id": "repo-repair-02",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "请修一个 DeepSeek 集成里最容易复现的工具调用稳定性问题，并说明怎么验证。",
+    "goal": "repo-root 修复任务应围绕 model/normalizer/runtime 的一个具体稳定性问题闭环。",
+    "maxSteps": 12
+  }
+]

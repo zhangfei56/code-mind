@@ -1,7 +1,39 @@
 import assert from "node:assert/strict";
-import { parseArgs } from "../../src/cli/parse-args.js";
+import { ValidationError } from "@code-mind/shared";
+import { parseArgs } from "../../apps/cli/src/cli/parse-args.js";
 
 export function runParseArgsTests(): void {
+  const interactiveDefaults = parseArgs([]);
+  assert.deepEqual(interactiveDefaults, {
+    command: "interactive",
+    cwd: process.cwd(),
+    mode: "edit",
+    maxSteps: 10,
+  });
+
+  const interactiveWithFlags = parseArgs(["--cwd", ".", "--model", "local:demo", "--mode", "agent"]);
+  assert.deepEqual(interactiveWithFlags, {
+    command: "interactive",
+    cwd: ".",
+    model: "local:demo",
+    mode: "agent",
+    maxSteps: 10,
+  });
+
+  const interactiveWithLogging = parseArgs([
+    "--cwd",
+    ".",
+    "--log-level",
+    "debug",
+  ]);
+  assert.deepEqual(interactiveWithLogging, {
+    command: "interactive",
+    cwd: ".",
+    mode: "edit",
+    maxSteps: 10,
+    logLevel: "debug",
+  });
+
   const configShow = parseArgs(["config", "show"]);
   assert.deepEqual(configShow, {
     command: "config",
@@ -47,7 +79,8 @@ export function runParseArgsTests(): void {
   assert.deepEqual(defaults, {
     task: "修复测试失败",
     cwd: process.cwd(),
-    mode: "suggest",
+    mode: "edit",
+    modeExplicit: false,
     maxSteps: 10,
   });
 
@@ -58,7 +91,7 @@ export function runParseArgsTests(): void {
     "--model",
     "local",
     "--mode",
-    "auto_edit",
+    "agent",
     "--max-steps",
     "7",
     "--plan",
@@ -69,7 +102,8 @@ export function runParseArgsTests(): void {
     task: "修复测试失败",
     cwd: ".",
     model: "local",
-    mode: "auto_edit",
+    mode: "agent",
+    modeExplicit: true,
     maxSteps: 7,
     planFirst: true,
     useWorktree: true,
@@ -80,6 +114,25 @@ export function runParseArgsTests(): void {
     task: "重构 auth 模块",
     cwd: process.cwd(),
     mode: "plan",
+    modeExplicit: true,
+    maxSteps: 10,
+  });
+
+  const askSubcommand = parseArgs(["ask", "解释这个项目"]);
+  assert.deepEqual(askSubcommand, {
+    task: "解释这个项目",
+    cwd: process.cwd(),
+    mode: "ask",
+    modeExplicit: true,
+    maxSteps: 10,
+  });
+
+  const editAuto = parseArgs(["edit", "修 failing test", "--auto"]);
+  assert.deepEqual(editAuto, {
+    task: "修 failing test",
+    cwd: process.cwd(),
+    mode: "agent",
+    modeExplicit: true,
     maxSteps: 10,
   });
 
@@ -95,5 +148,87 @@ export function runParseArgsTests(): void {
   assert.deepEqual(review, {
     command: "review",
     cwd: ".",
+  });
+
+  assert.throws(
+    () => parseArgs(["fix bug", "--mode", "invalid"]),
+    ValidationError,
+    "PA-06",
+  );
+
+  assert.throws(
+    () => parseArgs(["ask"]),
+    ValidationError,
+    "PA-07",
+  );
+
+  assert.throws(
+    () => parseArgs(["--mode", "read_only", "x"]),
+    ValidationError,
+    "PA-08",
+  );
+
+  const agentSubcommand = parseArgs(["agent", "fix bug", "--max-steps", "20"]);
+  assert.deepEqual(agentSubcommand, {
+    task: "fix bug",
+    cwd: process.cwd(),
+    mode: "agent",
+    modeExplicit: true,
+    maxSteps: 20,
+  });
+
+  const continueRun = parseArgs(["run", "--continue", "--cwd", "."]);
+  assert.deepEqual(continueRun, {
+    task: "",
+    cwd: ".",
+    mode: "edit",
+    modeExplicit: false,
+    maxSteps: 10,
+    continue: true,
+  });
+
+  const jsonRun = parseArgs(["run", "fix bug", "--json"]);
+  assert.deepEqual(jsonRun, {
+    task: "fix bug",
+    cwd: process.cwd(),
+    mode: "edit",
+    modeExplicit: false,
+    maxSteps: 10,
+    json: true,
+  });
+
+  const jsonlRun = parseArgs(["run", "fix bug", "--jsonl"]);
+  assert.deepEqual(jsonlRun, {
+    task: "fix bug",
+    cwd: process.cwd(),
+    mode: "edit",
+    modeExplicit: false,
+    maxSteps: 10,
+    jsonl: true,
+  });
+
+  const loggedRun = parseArgs([
+    "run",
+    "fix bug",
+    "--log-level",
+    "debug",
+  ]);
+  assert.deepEqual(loggedRun, {
+    task: "fix bug",
+    cwd: process.cwd(),
+    mode: "edit",
+    modeExplicit: false,
+    maxSteps: 10,
+    logLevel: "debug",
+  });
+
+  const promptFileRun = parseArgs(["run", "--file", "prompt.md", "--cwd", "."]);
+  assert.deepEqual(promptFileRun, {
+    task: "",
+    cwd: ".",
+    mode: "edit",
+    modeExplicit: false,
+    maxSteps: 10,
+    promptFile: "prompt.md",
   });
 }

@@ -1,16 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
-import { PlanManager } from "../../src/engineering/plan-manager.js";
-import { DefaultTestRunner } from "../../src/engineering/test-runner.js";
-import { LspAdapter } from "../../src/engineering/lsp-adapter.js";
-import { ReviewEngine } from "../../src/engineering/review-engine.js";
-import { GitManager } from "../../src/engineering/git-manager.js";
-import { WorktreeManager } from "../../src/engineering/worktree-manager.js";
-import { EngineeringOrchestrator } from "../../src/engineering/engineer.js";
-import { AgentRuntime } from "../../src/agent/runtime.js";
+import { DefaultTestRunner, ReviewEngine } from "@code-mind/verify";
+import { LspAdapter } from "@code-mind/execution";
+import { GitManager, WorktreeManager } from "@code-mind/execution";
+import { createAgentLoopController } from "@code-mind/core";
 import type {
   AgentProfile,
   ModelCapabilities,
@@ -18,7 +14,7 @@ import type {
   ModelRequest,
   ModelResponse,
   UserTask,
-} from "../../src/shared/types.js";
+} from "@code-mind/shared";
 
 function git(cwd: string, args: string[]): string {
   return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
@@ -90,12 +86,6 @@ export async function runPhase4EngineeringTests(): Promise<void> {
     "utf8",
   );
 
-  const planManager = new PlanManager();
-  const plan = planManager.createPlan("重构 auth 模块，把 token 校验逻辑拆出来", workspace);
-  assert.equal(plan.steps.length, 3);
-  assert.match(planManager.renderMarkdown(plan), /修改计划/);
-  assert.equal(planManager.createPatchPlan(plan).patches.length, 3);
-
   const testRunner = new DefaultTestRunner();
   const profile = await testRunner.detect(workspace);
   assert.equal(profile.language, "typescript");
@@ -165,7 +155,7 @@ export async function runPhase4EngineeringTests(): Promise<void> {
   const engineeringWorkspace = mkdtempSync(join(tmpdir(), "code-mind-phase4-plan-"));
   mkdirSync(join(engineeringWorkspace, "src"), { recursive: true });
   writeFileSync(join(engineeringWorkspace, "src", "a.ts"), "export const a = 1;\n", "utf8");
-  const runtime = new AgentRuntime();
+  const loop = createAgentLoopController();
   const engineeringTask: UserTask = {
     id: "task_plan",
     text: "重构 auth 模块",
@@ -178,16 +168,17 @@ export async function runPhase4EngineeringTests(): Promise<void> {
     name: "Default",
     systemPrompt: "You are a code agent.",
   };
-  const result = await new EngineeringOrchestrator().run({
+  const result = await loop.run({
     task: engineeringTask,
     profile: engineeringProfile,
     model: new NoopProvider(),
-    runtime,
-    workspaceRoot: engineeringWorkspace,
-    planOnly: true,
   });
-  assert.ok(result.plan);
+  assert.equal(result.status, "success");
+  assert.equal(result.metadata?.completion, "plan_delivered");
   const sessionDir = join(engineeringWorkspace, ".agent", "sessions", result.sessionId);
-  assert.match(readFileSync(join(sessionDir, "plan.md"), "utf8"), /修改计划/);
-  assert.match(readFileSync(join(sessionDir, "task-state.json"), "utf8"), /awaiting_approval/);
+  const manifest = JSON.parse(readFileSync(join(sessionDir, "session.json"), "utf8"));
+  assert.equal(manifest.mode, "plan");
+  assert.ok(existsSync(join(sessionDir, "plan.md")));
+  assert.ok(existsSync(join(sessionDir, "plan.json")));
+  assert.ok(!existsSync(join(sessionDir, "task-state.json")));
 }

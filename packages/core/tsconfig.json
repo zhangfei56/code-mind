@@ -1,0 +1,34 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "paths": {
+      "@code-mind/capabilities": ["../capabilities/src/index.ts"],
+      "@code-mind/config": ["../config/src/index.ts"],
+      "@code-mind/models": ["../models/src/index.ts"],
+      "@code-mind/context": ["../context/src/index.ts"],
+      "@code-mind/execution": ["../execution/src/index.ts"],
+      "@code-mind/workspace": ["../workspace/src/index.ts"],
+      "@code-mind/security": ["../security/src/index.ts"],
+      "@code-mind/observability": ["../observability/src/index.ts"],
+      "@code-mind/session": ["../session/src/index.ts"],
+      "@code-mind/shared": ["../shared/src/index.ts"],
+      "@code-mind/verify": ["../verify/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../capabilities" },
+    { "path": "../shared" },
+    { "path": "../config" },
+    { "path": "../models" },
+    { "path": "../context" },
+    { "path": "../execution" },
+    { "path": "../workspace" },
+    { "path": "../security" },
+    { "path": "../observability" },
+    { "path": "../session" },
+    { "path": "../verify" }
+  ]
+}

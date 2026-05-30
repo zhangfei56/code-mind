@@ -1,0 +1,28 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "paths": {
+      "@code-mind/config": ["../../packages/config/src/index.ts"],
+      "@code-mind/core": ["../../packages/core/src/index.ts"],
+      "@code-mind/models": ["../../packages/models/src/index.ts"],
+      "@code-mind/observability": ["../../packages/observability/src/index.ts"],
+      "@code-mind/server-runtime": ["../../packages/server-runtime/src/index.ts"],
+      "@code-mind/session": ["../../packages/session/src/index.ts"],
+      "@code-mind/shared": ["../../packages/shared/src/index.ts"],
+      "@code-mind/workspace": ["../../packages/workspace/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../../packages/config" },
+    { "path": "../../packages/core" },
+    { "path": "../../packages/models" },
+    { "path": "../../packages/observability" },
+    { "path": "../../packages/server-runtime" },
+    { "path": "../../packages/session" },
+    { "path": "../../packages/shared" },
+    { "path": "../../packages/workspace" }
+  ]
+}

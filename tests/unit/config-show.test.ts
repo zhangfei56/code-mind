@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { renderConfig } from "../../src/cli/config-show.js";
+import { renderConfig } from "../../apps/cli/src/commands/config.js";
 
 export function runConfigShowTests(): void {
   const output = renderConfig({
@@ -12,8 +12,12 @@ export function runConfigShowTests(): void {
         model: "demo",
       },
     },
+    logging: {
+      level: "info",
+    },
   });
 
   assert.match(output, /"defaultModel": "local"/);
   assert.match(output, /"provider": "openai-compatible"/);
+  assert.match(output, /"level": "info"/);
 }

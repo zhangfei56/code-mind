@@ -1,21 +1,21 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "lib": ["ES2022"],
-    "rootDir": "src",
-    "outDir": "dist",
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "declaration": true,
-    "sourceMap": true,
-    "types": ["node"]
-  },
-  "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules", "tests"]
+  "files": [],
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./packages/config" },
+    { "path": "./packages/workspace" },
+    { "path": "./packages/security" },
+    { "path": "./packages/models" },
+    { "path": "./packages/context" },
+    { "path": "./packages/execution" },
+    { "path": "./packages/observability" },
+    { "path": "./packages/core" },
+    { "path": "./packages/verify" },
+    { "path": "./packages/capabilities" },
+    { "path": "./packages/session" },
+    { "path": "./packages/server-runtime" },
+    { "path": "./packages/memory" },
+    { "path": "./apps/cli" },
+    { "path": "./apps/api-server" }
+  ]
 }

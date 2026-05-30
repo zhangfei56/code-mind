@@ -6,9 +6,9 @@ import {
   assertPathInWorkspace,
   isSensitivePath,
   resolvePathInWorkspace,
-} from "../../src/workspace/sandbox-path.js";
-import { findProjectRules } from "../../src/workspace/project-rules.js";
-import { resolveWorkspace } from "../../src/workspace/resolve-workspace.js";
+} from "@code-mind/workspace";
+import { findProjectRules } from "@code-mind/workspace";
+import { resolveWorkspace } from "@code-mind/workspace";
 
 export function runWorkspaceTests(): void {
   const workspace = mkdtempSync(join(tmpdir(), "code-mind-workspace-"));
@@ -33,6 +33,11 @@ export function runWorkspaceTests(): void {
   mkdirSync(join(workspace, "packages", "cli"), { recursive: true });
   const nestedWorkspace = resolveWorkspace(join(workspace, "packages", "cli"));
   assert.equal(nestedWorkspace, workspace);
+
+  const childProject = join(workspace, "examples", "demo");
+  mkdirSync(childProject, { recursive: true });
+  writeFileSync(join(childProject, "package.json"), "{\"name\":\"demo\"}", "utf8");
+  assert.equal(resolveWorkspace(childProject), childProject);
 
   const standalone = mkdtempSync(join(tmpdir(), "code-mind-standalone-"));
   assert.equal(resolveWorkspace(standalone), standalone);

@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { PermissionEngine } from "../../src/permissions/permission-engine.js";
-import type { PermissionRequest, ToolCall } from "../../src/shared/types.js";
+import { PermissionEngine } from "@code-mind/security";
+import type { PermissionRequest, ToolCall } from "@code-mind/shared";
 
 function createRequest(
   toolCall: ToolCall,
-  mode: PermissionRequest["mode"] = "suggest",
+  mode: PermissionRequest["mode"] = "edit",
 ): PermissionRequest {
   return {
     toolCall,
@@ -68,7 +68,7 @@ export async function runPermissionEngineTests(): Promise<void> {
           ].join("\n"),
         },
       },
-      "auto_edit",
+      "agent",
     ),
   );
   assert.equal(allowPatch.type, "allow");
@@ -89,7 +89,7 @@ export async function runPermissionEngineTests(): Promise<void> {
           ].join("\n"),
         },
       },
-      "auto_edit",
+      "agent",
     ),
   );
   assert.equal(askPackagePatch.type, "ask");
@@ -110,7 +110,7 @@ export async function runPermissionEngineTests(): Promise<void> {
           ].join("\n"),
         },
       },
-      "full_auto",
+      "agent",
     ),
   );
   assert.equal(denyWorkflowPatch.type, "deny");
@@ -122,10 +122,22 @@ export async function runPermissionEngineTests(): Promise<void> {
         name: "run_shell",
         arguments: { command: "npm test" },
       },
-      "auto_edit",
+      "agent",
     ),
   );
   assert.equal(allowTest.type, "allow");
+
+  const askTestInEdit = await engine.check(
+    createRequest(
+      {
+        id: "call_5a",
+        name: "run_shell",
+        arguments: { command: "npm test" },
+      },
+      "edit",
+    ),
+  );
+  assert.equal(askTestInEdit.type, "ask");
 
   const allowReadOnlyShell = await engine.check(
     createRequest(
@@ -134,22 +146,22 @@ export async function runPermissionEngineTests(): Promise<void> {
         name: "run_shell",
         arguments: { command: "git diff" },
       },
-      "read_only",
+      "ask",
     ),
   );
   assert.equal(allowReadOnlyShell.type, "allow");
 
-  const denyMutatingReadOnlyShell = await engine.check(
+  const denyMutatingAskShell = await engine.check(
     createRequest(
       {
         id: "call_5c",
         name: "run_shell",
         arguments: { command: "npm test" },
       },
-      "read_only",
+      "ask",
     ),
   );
-  assert.equal(denyMutatingReadOnlyShell.type, "deny");
+  assert.equal(denyMutatingAskShell.type, "deny");
 
   const denyDangerous = await engine.check(
     createRequest(
@@ -158,7 +170,7 @@ export async function runPermissionEngineTests(): Promise<void> {
         name: "run_shell",
         arguments: { command: "rm -rf ." },
       },
-      "auto_edit",
+      "agent",
     ),
   );
   assert.equal(denyDangerous.type, "deny");
@@ -170,7 +182,7 @@ export async function runPermissionEngineTests(): Promise<void> {
         name: "run_shell",
         arguments: { command: "npm install lodash" },
       },
-      "auto_edit",
+      "agent",
     ),
   );
   assert.equal(askInstall.type, "ask");

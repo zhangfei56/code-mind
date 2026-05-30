@@ -10,28 +10,33 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { parseArgs } from "../../src/cli/parse-args.js";
-import { loadExtensionSettings, saveExtensionSettings } from "../../src/extensions/settings.js";
-import { ToolRegistry } from "../../src/tools/registry.js";
-import { registerDefaultTools } from "../../src/tools/default-tools.js";
-import { loadExtensions } from "../../src/extensions/loader.js";
-import { buildCapabilities } from "../../src/extensions/capabilities.js";
-import { McpAdapter } from "../../src/extensions/mcp-adapter.js";
-import { HookSystem } from "../../src/extensions/hook-system.js";
-import { SkillEngine } from "../../src/extensions/skill-engine.js";
-import { CommandSystem } from "../../src/extensions/command-system.js";
-import { PluginManager } from "../../src/extensions/plugin-manager.js";
-import { SubagentManager } from "../../src/extensions/subagent-manager.js";
-import { createWebUiServer } from "../../src/extensions/web-ui.js";
-import { CiBot } from "../../src/extensions/ci-bot.js";
-import { AgentRuntime } from "../../src/agent/runtime.js";
+import { parseArgs } from "../../apps/cli/src/cli/parse-args.js";
+import {
+  buildCapabilities,
+  CiBot,
+  CommandSystem,
+  HookSystem,
+  loadExtensionSettings,
+  PluginManager,
+  saveExtensionSettings,
+  SkillEngine,
+  SubagentManager,
+  type SubagentLoopHostFactory,
+} from "@code-mind/capabilities";
+import { McpAdapter } from "@code-mind/execution";
+import { createWebUiServer } from "@code-mind/api-server";
+import {
+  loadComposedToolRegistry,
+  loadWorkspaceExtensions,
+} from "@code-mind/agent-composition";
+import { createAgentLoopController } from "@code-mind/core";
 import type {
   AgentProfile,
   ModelCapabilities,
   ModelProvider,
   ModelRequest,
   ModelResponse,
-} from "../../src/shared/types.js";
+} from "@code-mind/shared";
 
 class ReviewProvider implements ModelProvider {
   name = "fake";
@@ -74,7 +79,7 @@ export async function runPhase5PlatformTests(): Promise<void> {
   );
   writeFileSync(
     join(workspace, ".agent", "skills", "code-review", "skill.yaml"),
-    "name: code-review\ndescription: review diff\ntools:\n  - git_diff\nallowed_modes:\n  - read_only\n",
+    "name: code-review\ndescription: review diff\ntools:\n  - git_diff\nallowed_modes:\n  - ask\n",
     "utf8",
   );
   writeFileSync(
@@ -84,12 +89,12 @@ export async function runPhase5PlatformTests(): Promise<void> {
   );
   writeFileSync(
     join(workspace, ".agent", "commands", "review.yaml"),
-    "name: review\ndescription: 审查当前 diff\nmode: read_only\nskill: code-review\n",
+    "name: review\ndescription: 审查当前 diff\nmode: ask\nskill: code-review\n",
     "utf8",
   );
   writeFileSync(
     join(workspace, ".agent", "agents", "code-reviewer.yaml"),
-    "name: code-reviewer\ndescription: 审查 diff\ntools:\n  - read_file\n  - grep\npermissions:\n  write: false\n  shell: false\n",
+    "name: code-reviewer\ndescription: 审查 diff\nmode: ask\ntools:\n  - read_file\n  - grep\n",
     "utf8",
   );
 
@@ -125,9 +130,7 @@ export async function runPhase5PlatformTests(): Promise<void> {
   const settings = loadExtensionSettings(workspace);
   assert.ok(settings.mcp?.servers?.mock);
 
-  const registry = new ToolRegistry();
-  registerDefaultTools(registry);
-  const extensions = await loadExtensions(workspace, registry);
+  const { toolRegistry: registry, extensions } = await loadComposedToolRegistry(workspace);
   const manifest = buildCapabilities(["local"], registry, extensions.registry);
   assert.ok(manifest.tools.includes("mcp__mock__echo"));
   assert.ok(manifest.skills.includes("code-review"));
@@ -148,7 +151,7 @@ export async function runPhase5PlatformTests(): Promise<void> {
     sessionId: "session",
     workspaceRoot: workspace,
     cwd: workspace,
-    mode: "read_only",
+    mode: "ask",
   });
   assert.match(mcpResult.output, /hello/);
   adapter.dispose();
@@ -158,7 +161,7 @@ export async function runPhase5PlatformTests(): Promise<void> {
     event: "PreToolUse",
     sessionId: "session",
     projectPath: workspace,
-    runMode: "suggest",
+    mode: "edit",
     toolCall: {
       id: "call_1",
       name: "apply_patch",
@@ -170,7 +173,7 @@ export async function runPhase5PlatformTests(): Promise<void> {
     event: "AfterPatchApply",
     sessionId: "session",
     projectPath: workspace,
-    runMode: "suggest",
+    mode: "edit",
   });
   assert.equal(afterPatchResults[0]?.action, "continue");
   assert.ok(existsSync(join(workspace, ".agent", "tmp", "marker.txt")));
@@ -219,18 +222,26 @@ export async function runPhase5PlatformTests(): Promise<void> {
   const installed = plugins.install(pluginSource);
   plugins.enable(installed.name);
   assert.ok(plugins.list().some((plugin) => plugin.name === "frontend-agent"));
-  const refreshedExtensions = await loadExtensions(workspace);
+  const refreshedExtensions = await loadWorkspaceExtensions(workspace);
   assert.ok(refreshedExtensions.skillEngine.list().some((skill) => skill.name === "frontend-ui"));
   assert.ok(refreshedExtensions.commandSystem.list().some((command) => command.name === "ui-review"));
 
   const subagentManager = new SubagentManager(workspace);
+  const loop = createAgentLoopController();
+  const hostFactory: SubagentLoopHostFactory = {
+    getHost(options) {
+      return options?.toolRegistry
+        ? createAgentLoopController({ toolRegistry: options.toolRegistry })
+        : loop;
+    },
+  };
   const subagentResult = await subagentManager.run(
     {
       parentSessionId: "parent",
       agentName: "code-reviewer",
       task: "审查当前 diff",
     },
-    new AgentRuntime(),
+    hostFactory,
     new ReviewProvider(),
     {
       id: "default",
