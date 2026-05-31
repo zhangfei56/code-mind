@@ -179,12 +179,18 @@ importers:
       '@code-mind/capabilities':
         specifier: workspace:*
         version: link:../capabilities
+      '@code-mind/config':
+        specifier: workspace:*
+        version: link:../config
       '@code-mind/core':
         specifier: workspace:*
         version: link:../core
       '@code-mind/execution':
         specifier: workspace:*
         version: link:../execution
+      '@code-mind/models':
+        specifier: workspace:*
+        version: link:../models
       '@code-mind/shared':
         specifier: workspace:*
         version: link:../shared
@@ -221,6 +227,9 @@ importers:
       '@code-mind/memory':
         specifier: workspace:*
         version: link:../memory
+      '@code-mind/models':
+        specifier: workspace:*
+        version: link:../models
       '@code-mind/shared':
         specifier: workspace:*
         version: link:../shared
