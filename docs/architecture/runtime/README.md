@@ -1,13 +1,13 @@
-# 请求生命周期流程图
+# 请求生命周期
 
+> layer: **architecture / runtime**  
 > scope: **request-lifecycle-overview**  
-> audience: agent, contributor  
-> last updated: 2026-05-30  
-> 本目录用流程图说明：用户请求如何进入系统，如何决定启用 skill/plugin，何时拼接 prompt，如何进入 tool loop，最后如何结束。
+> audience: agent（改 loop、prompt、tool、HITL 时按需读子文档）  
+> 上级索引：[../README.md](../README.md)
 
 **包归属以 [core-boundary.md](../core-boundary.md) 为准。** 主流程图中标注 Guardrails 的节点当前由 PermissionEngine + SafetyGuard 覆盖；embedding 召回等为增强项，见各子文档实现状态。
 
-**Loop 分层**：步内 phase 由 Run Kernel 驱动；步间 step 预算与 `LoopPolicy` 由 `AgentLoopController` + `task-strategy` 驱动（双层 FSM，见 [architecture.md §1.8](../architecture.md#18-双层-fsm-与执行分层)）。
+**Loop 分层**：步内 phase 由 Run Kernel 驱动；步间 step 预算与 `LoopPolicy` 由 `AgentLoopController` + `task-strategy` 驱动（双层 FSM，见 [data-model.md §1.8](../data-model.md#18-双层-fsm-与执行分层)）。
 
 ---
 
@@ -16,7 +16,7 @@
 单文件可以写完整，但主流程、skill/plugin 选择、prompt 拼接、tool loop、结束条件放在一起会很快变成一张难维护的大图。这里采用目录结构：
 
 ```text
-docs/request-lifecycle/
+architecture/runtime/
   README.md                  主流程图
   capability-selection.md    skill/plugin 选择与启用
   prompt-assembly.md         prompt / context / tool schema 拼接

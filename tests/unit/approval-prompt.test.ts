@@ -35,8 +35,9 @@ export async function runApprovalPromptTests(): Promise<void> {
     },
   };
 
-  assert.match(renderApprovalBlock(event, undefined, "repl").join("\n"), /Reply at prompt/);
+  assert.match(renderApprovalBlock(event, undefined, "repl").join("\n"), /Reply at approval/);
   assert.doesNotMatch(renderApprovalBlock(event, undefined, "inline").join("\n"), /Allow\?/);
+  assert.doesNotMatch(renderApprovalBlock(event, undefined, "inline").join("\n"), /approval ›/);
 
   const workspace = mkdtempSync(join(tmpdir(), "code-mind-approval-prompt-"));
   const manager = new ApprovalCoordinator(workspace);

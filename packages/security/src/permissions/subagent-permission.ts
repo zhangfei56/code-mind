@@ -2,6 +2,10 @@ import type { AgentMode, PermissionDecision } from "@code-mind/shared";
 
 export const SUBAGENT_WRITE_TOOLS = new Set([
   "apply_patch",
+  "write_file",
+  "search_replace",
+  "delete_file",
+  "move_file",
   "run_shell",
   "git_restore_file",
   "worktree_create",

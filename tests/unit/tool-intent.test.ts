@@ -7,9 +7,9 @@ export async function runToolIntentTests(): Promise<void> {
   const readImpl = describeToolIntent({
     id: "t1",
     name: "read_file",
-    arguments: { path: "docs/implementation.md" },
+    arguments: { path: "docs/architecture/packages.md" },
   });
-  assert.match(readImpl, /implementation status/i);
+  assert.match(readImpl, /package map/i);
 
   const runTests = describeToolIntent({
     id: "t2",
@@ -37,7 +37,7 @@ export async function runToolIntentTests(): Promise<void> {
         {
           id: "c1",
           name: "read_file",
-          arguments: { path: "docs/implementation.md" },
+          arguments: { path: "docs/architecture/packages.md" },
         },
         {
           id: "c2",
@@ -51,6 +51,6 @@ export async function runToolIntentTests(): Promise<void> {
   const intentLines = renderModelIntentLines(event, 1);
   assert.ok(intentLines.some((line) => line === "Why"));
   assert.ok(intentLines.some((line) => line === "Plan"));
-  assert.ok(intentLines.some((line) => line.includes("implementation status")));
+  assert.ok(intentLines.some((line) => line.includes("package map")));
   assert.ok(intentLines.some((line) => line.includes("Run tests")));
 }

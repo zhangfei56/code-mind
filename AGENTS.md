@@ -2,10 +2,10 @@
 
 本仓库是 **local-first code agent** monorepo。Agent 与贡献者请按以下顺序阅读：
 
-1. [docs/README.md](docs/README.md) — 文档路由（**先读**）
-2. [docs/cli-guide.md](docs/cli-guide.md) — **编译、配置、CLI 使用**
-3. [docs/implementation.md](docs/implementation.md) — 改代码前：MVP、实现状态、模块归属
-4. [docs/architecture.md](docs/architecture.md) — 理解分层与设计原则
+1. [docs/README.md](docs/README.md) — 文档入口（**先读**）
+2. [docs/architecture/principles.md](docs/architecture/principles.md) — **架构铁律与 MVP 边界**
+3. [docs/architecture/core-boundary.md](docs/architecture/core-boundary.md) — core 边界与冻结契约
+4. [docs/architecture/README.md](docs/architecture/README.md) — 按修改范围加载子文档
 
 ## 常用代码路径
 
@@ -35,8 +35,8 @@ packages/workspace/src/                        snapshot / diff / rollback-manage
 ## 约束
 
 - 模型不直接操作 FS/shell/git；副作用经 runtime → execution
-- 改前查 [implementation.md §3 实现状态矩阵](docs/implementation.md#3-实现状态矩阵)
-- 不要按 [implementation.md §1.4](docs/implementation.md#14-mvp-可暂缓) 或文档中的 `[planned]` 假设代码已存在
+- 改前查 [architecture/packages.md](docs/architecture/packages.md) 实现状态矩阵
+- 不要按 [architecture/principles.md §1.3](docs/architecture/principles.md#13-明确暂缓勿假设已实现) 或 `[planned]` 假设代码已存在
 
 ## 开发命令
 
@@ -45,4 +45,4 @@ pnpm install && pnpm build && pnpm test
 pnpm dev -- "your task" --cwd .
 ```
 
-完整 CLI 教程见 [docs/cli-guide.md](docs/cli-guide.md)。
+用户操作见 [docs/user-guide.md](docs/user-guide.md)。待办见 [docs/backlog.md](docs/backlog.md)。

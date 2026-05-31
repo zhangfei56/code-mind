@@ -3,6 +3,8 @@
 > scope: **delegation**  
 > Delegation 处理 handoff、subagent、agent-as-tool。它让复杂任务可以委派给专门 agent，但必须保持边界和审计。
 
+**实现状态（2026-05）：** **Subagent** 已通过 `run_subagent` 落地（`@code-mind/capabilities` + [subagent.md](../domains/subagent.md)）。**Handoff**（控制权移交 specialist）与 **Agent-as-tool**（把 agent 暴露为普通 tool）**尚未实现**。
+
 ---
 
 ## 子系统边界
@@ -32,11 +34,11 @@ flowchart TD
 
 ## 三种形态
 
-| 形态 | 用途 | 特点 |
-|------|------|------|
-| Handoff | 把控制权交给另一个 agent。 | specialist 接管流程，适合领域切换。 |
-| Subagent | 父 agent 派发子任务并等待结果。 | 适合探索、计划、审查、并行子任务。 |
-| Agent-as-tool | 把 agent 暴露成普通工具。 | 调用简单，但要小心 guardrail/permission 覆盖范围。 |
+| 形态 | 用途 | 特点 | 实现 |
+|------|------|------|------|
+| Handoff | 把控制权交给另一个 agent。 | specialist 接管流程，适合领域切换。 | **未实现** |
+| Subagent | 父 agent 派发子任务并等待结果。 | 适合探索、计划、审查、并行子任务。 | **已有**（`run_subagent`） |
+| Agent-as-tool | 把 agent 暴露成普通工具。 | 调用简单，但要小心 guardrail/permission 覆盖范围。 | **未实现** |
 
 ## 何时不委派
 

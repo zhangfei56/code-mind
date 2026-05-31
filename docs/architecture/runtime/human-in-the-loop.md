@@ -14,6 +14,19 @@
 | 不能做什么 | 不能丢失中断状态，不能只在最终输出前才审批，不能把用户拒绝当工具成功。 |
 | 特殊处理 | resume 必须基于同一个 session/checkpoint；用户编辑状态后要记录 diff 和原因。 |
 
+**实现状态（2026-05）：**
+
+| 能力 | CLI | HTTP API | 说明 |
+|------|-----|----------|------|
+| approve / reject / always | **已有** | **已有** | `ApprovalCoordinator` / `http-approval-queue` |
+| abort（取消 run） | **已有** | **已有** | 打断 tool / plan 审批等待 |
+| plan 审批 | **已有** | **已有**（API）；Web UI 面板 **部分** | `http-plan-approval-queue` |
+| edit（改参数/计划后继续） | **未实现** | **未实现** | spec 目标形态 |
+| clarify（用户补充信息） | **未实现** | **未实现** | spec 目标形态 |
+| 独立 guardrails tripwire | **未实现** | **未实现** | MVP 由 PermissionEngine + SafetyGuard 覆盖 |
+
+---
+
 ## 总流程
 
 ```mermaid
@@ -48,13 +61,13 @@ Plan-first 需要批准计划
 
 ## 用户可做的动作
 
-| 动作 | 结果 |
-|------|------|
-| approve | 继续原动作。 |
-| reject | 记录拒绝，模型尝试替代路径或结束。 |
-| edit | 修改计划、工具参数、目标文件或约束后继续。 |
-| clarify | 把用户补充信息作为新上下文进入下一轮。 |
-| abort | 取消 run，进入 finalize。 |
+| 动作 | 结果 | 实现 |
+|------|------|------|
+| approve | 继续原动作。 | **已有** |
+| reject | 记录拒绝，模型尝试替代路径或结束。 | **已有** |
+| edit | 修改计划、工具参数、目标文件或约束后继续。 | **未实现** |
+| clarify | 把用户补充信息作为新上下文进入下一轮。 | **未实现** |
+| abort | 取消 run，进入 finalize。 | **已有** |
 
 ## 和 prompt 的关系
 

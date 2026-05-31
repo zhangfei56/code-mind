@@ -26,6 +26,8 @@ import { renderPlanBlock, renderTaskResult, renderVerification } from "../ui/ren
 import { createProgressPrinter } from "../ui/progress-printer.js";
 import { buildRunHeaderDetails } from "../ui/header-details.js";
 import { CliPermissionPrompter } from "../interactive/cli-permission-prompter.js";
+import { TerminalComposer } from "../ui/terminal-composer.js";
+import { theme } from "../ui/theme.js";
 import {
   composeAgentLoop,
   loadComposedToolRegistry,
@@ -480,6 +482,9 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
     process.stdout.isTTY &&
     !runArgs.json &&
     !runArgs.jsonl;
+  const terminalComposer = useInteractiveApproval
+    ? new TerminalComposer({ promptOutput: process.stderr })
+    : undefined;
   const printer = createProgressPrinter({
     ...(runArgs.json ? { json: true } : {}),
     ...(runArgs.jsonl ? { jsonl: true } : {}),
@@ -487,7 +492,11 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
     ...(runArgs.trace ? { trace: true } : {}),
     ...(runArgs.debug ? { debug: true } : {}),
     ...(useInteractiveApproval
-      ? { approvalPromptStyle: "inline" as const, interactiveTerminal: true }
+      ? {
+          approvalPromptStyle: "inline" as const,
+          interactiveTerminal: true,
+          ...(terminalComposer === undefined ? {} : { terminalComposer }),
+        }
       : {}),
   });
   const task = applyRecommendedMaxSteps(
@@ -560,13 +569,21 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
     configLines: renderConfigPaths().split("\n"),
   });
   printer.printHeader(finalTask.text, finalTask.mode, resolved.workspaceRoot, headerDetails);
+  if (terminalComposer) {
+    terminalComposer.install();
+    terminalComposer.attachPromptOnly(`${theme.dim("agent running")} `);
+  }
   const profile = createDefaultProfile(resolved.model ?? provider.name, {
     repoRootFocus: isBroadRepoRootTask(task, task.cwd),
   });
   const cliPermissionPrompter = useInteractiveApproval
     ? new CliPermissionPrompter({
+        ...(terminalComposer === undefined ? {} : { composer: terminalComposer }),
         onBeforePrompt: () => {
           printer.pauseForInput();
+        },
+        onAfterPrompt: () => {
+          terminalComposer?.attachPromptOnly(`${theme.dim("agent running")} `);
         },
       })
     : undefined;
@@ -610,10 +627,21 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
     planSessionId: session.planResult?.sessionId,
   });
   if (session.planResult && !runArgs.json && !runArgs.jsonl) {
-    process.stderr.write(renderPlanBlock(session.planResult.finalText));
+    const planBlock = renderPlanBlock(session.planResult.finalText);
+    if (terminalComposer?.isPinned()) {
+      terminalComposer.writeAbove(planBlock);
+    } else {
+      process.stderr.write(planBlock);
+    }
   } else if (finalTask.mode === "plan" && !runArgs.json && !runArgs.jsonl) {
-    process.stderr.write(renderPlanBlock(session.result.finalText));
+    const planBlock = renderPlanBlock(session.result.finalText);
+    if (terminalComposer?.isPinned()) {
+      terminalComposer.writeAbove(planBlock);
+    } else {
+      process.stderr.write(planBlock);
+    }
   }
+  terminalComposer?.teardown();
   console.log(printer.renderResult(session.task, session.result));
   printer.dispose();
   return isAgentRunSuccessful(session.result) ? 0 : 1;

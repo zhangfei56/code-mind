@@ -1,7 +1,9 @@
 # Core Boundary
 
+> layer: **architecture / core-boundary**  
 > status: active  
-> last updated: 2026-05-30（API 分层 §1、冻结契约 §4、扩展规则 §5）
+> last updated: 2026-05-31  
+> 上级索引：[README.md](./README.md)
 
 本文固定 `packages/core` 的边界。判断标准：
 
@@ -11,7 +13,7 @@ external packages = concrete capability/session/verification/server implementati
 apps = composition root
 ```
 
-核心稳定化（kernel、ports、composition）已完成；双层 FSM 见 [architecture.md §1.8](./architecture.md#18-双层-fsm-与执行分层)。
+核心稳定化（kernel、ports、composition）已完成；双层 FSM 见 [data-model.md §1.8](./data-model.md#18-双层-fsm-与执行分层)。
 
 ## 1. Public Core API
 
@@ -129,7 +131,7 @@ apps/*                  composition root（`composeAgentLoop`；入口必须 `ru
 | `getEffectiveResultStatus` 语义 | 产品分支依赖 |
 | Checkpoint 规则 | approval / tool handled / terminal 必须经 `stateStore` port |
 | 权限链顺序 | model → permission → safety → approval → hooks → executor |
-| 双层 FSM 职责划分 | kernel=步内，controller=步间（见 architecture §1.8） |
+| 双层 FSM 职责划分 | kernel=步内，controller=步间（见 [data-model.md §1.8](./data-model.md#18-双层-fsm-与执行分层)） |
 
 ## 5. Extension Rules
 
@@ -138,7 +140,7 @@ apps/*                  composition root（`composeAgentLoop`；入口必须 `ru
 3. 步内新阶段：**先** kernel event/command/invariant 测试，再改 runtime。
 4. 步间新策略：改 `task-strategy` / controller，**不** 扩展 kernel phase 枚举（除非确有步内语义）。
 5. Apps 是 composition root；勿在 CLI/API route 绕过 `runAgentSession`。
-6. 扩展路径只允许三类：Port / 包 / Apps 组合（见 [architecture.md §2.7](./architecture.md#27-扩展规则三类插口)）。
+6. 扩展路径只允许三类：Port / 包 / Apps 组合（见 [file-layout.md §2.7](./file-layout.md#27-扩展规则三类插口)）。
 
 ## 6. Migration Rules
 
@@ -148,4 +150,4 @@ apps/*                  composition root（`composeAgentLoop`；入口必须 `ru
 
 ## 7. Related docs
 
-`implementation.md`、`architecture.md`、`request-lifecycle/`、`subagent-policy.md`、`completion-audit-checklist.md`。冲突时以本文为准。
+[principles.md](./principles.md)、[packages.md](./packages.md)、[data-model.md](./data-model.md)、[runtime/](./runtime/README.md)、[domains/subagent.md](./domains/subagent.md)、[../archive/completion-audit.md](../archive/completion-audit.md)。冲突时以本文为准。

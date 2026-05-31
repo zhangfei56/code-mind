@@ -123,8 +123,8 @@ export async function runCoreStabilityAuditTests(): Promise<void> {
     "packages/capabilities/src/capability-selector.ts",
     "packages/session/src/session-store.ts",
     "packages/verify/src/verification.ts",
-    "docs/completion-audit-checklist.md",
-    "docs/core-boundary.md",
+    "docs/archive/completion-audit.md",
+    "docs/architecture/core-boundary.md",
   ];
 
   for (const relativePath of requiredPaths) {

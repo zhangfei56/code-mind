@@ -67,13 +67,13 @@ pnpm exec tsx tests/run-tests.ts
 
 - [x] `@code-mind/core` 不 public export capabilities / verify / session / server-runtime 实现（`runCoreStabilityAuditTests` 审计 index）
 - [x] `packages/core/src/extensions|session|verify` compat copy 已删除
-- [x] 新能力实现进 owning package（见 [core-boundary.md](./core-boundary.md)）
+- [x] 新能力实现进 owning package（见 [core-boundary.md](../architecture/core-boundary.md)）
 - [x] Runtime loop 持久化经 `SessionStorePort`；apps/API HITL 经 `createOrchestrationSessionStore`
 - [x] L1 产品 API 未 breaking change（`runAgentSession`、result/status 语义）
 
 ### 扩展路径（新功能 PR 自检）
 
-新功能应只走以下路径之一（详见 [architecture.md §2.7](./architecture.md#27-扩展规则三类插口)）：
+新功能应只走以下路径之一（详见 [file-layout.md §2.7](../architecture/file-layout.md#27-扩展规则三类插口)）：
 
 | 需求 | 应走 |
 |------|------|
@@ -125,6 +125,6 @@ closingTurn, pendingToolCalls, commands, checkpointReasons, primaryCommand
 
 ## 相关文档
 
-- [core-boundary.md](./core-boundary.md) — 包归属与 API 分层
-- [implementation.md](./implementation.md) — 现状与模块归属
-- [request-lifecycle/observability.md](./request-lifecycle/observability.md) — 事件类型与 redaction
+- [core-boundary.md](../architecture/core-boundary.md) — 包归属与 API 分层
+- [packages.md](../architecture/packages.md) — 包映射与实现状态
+- [architecture/runtime/observability.md](../architecture/runtime/observability.md) — 事件类型与 redaction

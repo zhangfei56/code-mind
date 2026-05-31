@@ -300,13 +300,12 @@ class CodeMindTuiApp {
         focus: { fg: "white", bg: "black" },
       },
     });
-    this.approvalManager = new ApprovalCoordinator(
-      state.cwd,
-      (approval) => {
+    this.approvalManager = new ApprovalCoordinator(state.cwd, {
+      onApprovalRequested: (approval) => {
         setPendingApproval(this.state, approval);
         this.showApprovalModal();
       },
-    );
+    });
   }
 
   async start(): Promise<void> {

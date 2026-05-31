@@ -3,6 +3,8 @@
 > scope: **mcp-integration**  
 > MCP 不是只有 tools。完整 MCP 集成要处理 tools、resources、prompts、roots、elicitation、sampling。
 
+**实现状态（2026-05）：** 当前仅 **MCP tools + stdio 传输** 已落地（`packages/execution/src/mcp/mcp-adapter.ts`）。工具以 `mcp__{server}__{tool}` 注册，经 PermissionEngine 与 tool loop 执行。resources、prompts、roots、elicitation、sampling **尚未实现**；下文描述完整目标形态。
+
 ---
 
 ## 子系统边界

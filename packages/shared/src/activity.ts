@@ -24,7 +24,13 @@ export function createEmptyToolActivityCounts(): ToolActivityCounts {
 
 const READ_TOOLS = new Set(["read_file", "list_dir"]);
 const SEARCH_TOOLS = new Set(["glob", "grep"]);
-const EDIT_TOOLS = new Set(["apply_patch"]);
+const EDIT_TOOLS = new Set([
+  "apply_patch",
+  "write_file",
+  "search_replace",
+  "delete_file",
+  "move_file",
+]);
 const SHELL_TOOLS = new Set(["run_shell"]);
 
 export function deriveActivityFromTool(toolCall: ToolCall): ActivityKind {
@@ -100,6 +106,13 @@ export function activityDetailFromTool(toolCall: ToolCall): string | undefined {
   }
   if (typeof args.path === "string") {
     return args.path;
+  }
+  if (toolCall.name === "move_file") {
+    const from = typeof args.from === "string" ? args.from : "";
+    const to = typeof args.to === "string" ? args.to : "";
+    if (from && to) {
+      return `${from} → ${to}`;
+    }
   }
   if (typeof args.pattern === "string") {
     return args.pattern;

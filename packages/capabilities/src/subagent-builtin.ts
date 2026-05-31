@@ -4,6 +4,7 @@ import type { SubagentDefinition } from "@code-mind/shared";
 export const READ_ONLY_SUBAGENT_TOOLS = [
   "read_file",
   "list_dir",
+  "glob",
   "grep",
   "git_status",
   "git_diff",

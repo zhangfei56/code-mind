@@ -26,6 +26,7 @@ import {
   renderResultFooterLines,
   renderTurnFinishedLine,
 } from "./result-summary.js";
+import type { TerminalComposer } from "./terminal-composer.js";
 import {
   createReplDisplayState,
   handleReplDisplayEvent,
@@ -93,6 +94,8 @@ export interface ProgressPrinterOptions {
   approvalPromptStyle?: ApprovalPromptStyle;
   /** TTY run/REPL with user input — never use \\r / cursor-up redraws on stderr. */
   interactiveTerminal?: boolean;
+  /** Pins user input to the bottom row while progress scrolls above. */
+  terminalComposer?: TerminalComposer;
 }
 
 function renderErrorGuidance(result: AgentResult): string[] {
@@ -137,6 +140,7 @@ export class ProgressPrinter {
   private inputPaused = false;
   /** REPL: keep stderr on new lines while readline may be active at the prompt. */
   private suppressInPlace = false;
+  private readonly terminalComposer: TerminalComposer | undefined;
   private readonly state: StatusState = {
     step: 0,
     maxSteps: 0,
@@ -147,6 +151,7 @@ export class ProgressPrinter {
   constructor(private readonly options: ProgressPrinterOptions) {
     this.stream = options.stream ?? process.stderr;
     this.contentStream = options.contentStream ?? process.stdout;
+    this.terminalComposer = options.terminalComposer;
     const level = options.level;
     if (this.usesReplDisplay()) {
       const ctx = options.replContext;
@@ -161,6 +166,7 @@ export class ProgressPrinter {
         level,
         stream: this.stream,
         tty: this.stream.isTTY,
+        flatActivityLog: options.interactiveTerminal === true,
       });
     }
     if (options.interactiveTerminal) {
@@ -293,7 +299,7 @@ export class ProgressPrinter {
           trace: showsTraceDetail(level) || debugStream,
         });
         if (line) {
-          this.stream.write(`${theme.dim(`  ${line}`, this.stream)}\n`);
+          this.emit(`${theme.dim(`  ${line}`, this.stream)}\n`, this.stream);
           if (debugStream) {
             return;
           }
@@ -443,7 +449,7 @@ export class ProgressPrinter {
         }
         const delta = typeof p.delta === "string" ? p.delta : "";
         if (delta.length > 0) {
-          this.contentStream.write(delta);
+          this.emit(delta, this.contentStream);
           this.streamedStdoutContent = true;
         }
         break;
@@ -451,7 +457,7 @@ export class ProgressPrinter {
       case "model.response": {
         this.streamContentActive = false;
         if (this.streamedStdoutContent) {
-          this.contentStream.write("\n");
+          this.emit("\n", this.contentStream);
         }
         const toolCallCount = typeof p.toolCallCount === "number" ? p.toolCallCount : 0;
         const textPreview = typeof p.textPreview === "string" ? p.textPreview : "";
@@ -484,6 +490,7 @@ export class ProgressPrinter {
         break;
       case "approval.requested":
         this.pauseForInput();
+        this.terminalComposer?.install();
         this.writeLines(
           renderApprovalBlock(event, this.stream, this.options.approvalPromptStyle ?? "display", {
             ...(this.state.lastStepIntent === undefined ? {} : { stepIntent: this.state.lastStepIntent }),
@@ -640,10 +647,10 @@ export class ProgressPrinter {
 
     if (this.previewLineActive) {
       this.moveToPreviewStart();
-      this.stream.write("\x1b[2K");
+      this.stream.write(`\x1b[2K${colored}`);
+    } else {
+      this.stream.write(`\r\x1b[2K${colored}`);
     }
-
-    this.stream.write(colored);
     this.previewLineActive = true;
     this.previewRowCount = this.estimatePreviewRows(fitted, columns);
   }
@@ -666,18 +673,27 @@ export class ProgressPrinter {
     this.paneLineCount = lines.length;
   }
 
+  private emit(text: string, _target: NodeJS.WriteStream = this.stream): void {
+    if (this.terminalComposer?.isPinned()) {
+      this.terminalComposer.writeAbove(text);
+      return;
+    }
+    _target.write(text);
+  }
+
   private writeLine(text: string): void {
-    this.stream.write(`${text}\n`);
+    this.emit(`${text}\n`);
   }
 
   private writeJsonLine(value: unknown): void {
-    this.stream.write(`${JSON.stringify(value)}\n`);
+    this.emit(`${JSON.stringify(value)}\n`);
   }
 
   private writeLines(lines: string[]): void {
-    for (const line of lines) {
-      this.stream.write(`${line}\n`);
+    if (lines.length === 0) {
+      return;
     }
+    this.emit(`${lines.join("\n")}\n`);
   }
 
   private writeReplStatusBar(): void {
@@ -686,15 +702,17 @@ export class ProgressPrinter {
     }
     const line = renderReplStatusBar(this.replState, this.stream);
     if (this.canUseInPlaceUpdates() && this.replStatusLineActive) {
-      this.stream.write(`\r\x1b[2K${line}`);
+      this.emit(`\r\x1b[2K${line}`, this.stream);
     } else {
-      this.stream.write(`${line}\n`);
+      this.emit(`${line}\n`, this.stream);
       this.replStatusLineActive = this.canUseInPlaceUpdates();
     }
   }
 }
 
-export function createProgressPrinter(options: DisplayOptions = {}): ProgressPrinter {
+export function createProgressPrinter(
+  options: DisplayOptions & { terminalComposer?: TerminalComposer } = {},
+): ProgressPrinter {
   const level = resolveDisplayMode(options);
   return new ProgressPrinter({
     level,
@@ -704,5 +722,8 @@ export function createProgressPrinter(options: DisplayOptions = {}): ProgressPri
     ...(options.interactiveTerminal === undefined
       ? {}
       : { interactiveTerminal: options.interactiveTerminal }),
+    ...(options.terminalComposer === undefined
+      ? {}
+      : { terminalComposer: options.terminalComposer }),
   });
 }

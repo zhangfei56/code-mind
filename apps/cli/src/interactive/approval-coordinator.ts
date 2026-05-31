@@ -25,17 +25,27 @@ interface PendingApproval {
   resolve: (result: { approved: boolean; approvalId: string }) => void;
 }
 
+export interface ApprovalCoordinatorOptions {
+  onApprovalRequested?: (approval: ApprovalRecord, formatted: string) => void;
+  emitMessage?: (message: string) => void;
+}
+
 export class ApprovalCoordinator {
   private readonly pendingApprovals = new Map<string, PendingApproval>();
   private readonly alwaysAllowed = new Set<string>();
 
   constructor(
     private workspaceRoot: string,
-    private readonly onApprovalRequested?: (
-      approval: ApprovalRecord,
-      formatted: string,
-    ) => void,
+    private readonly options: ApprovalCoordinatorOptions = {},
   ) {}
+
+  private emitMessage(message: string): void {
+    if (this.options.emitMessage) {
+      this.options.emitMessage(message);
+      return;
+    }
+    console.log(message);
+  }
 
   setWorkspaceRoot(workspaceRoot: string): void {
     this.workspaceRoot = workspaceRoot;
@@ -51,20 +61,20 @@ export class ApprovalCoordinator {
       return false;
     }
     if (choice === "explain") {
-      console.log(
+      this.emitMessage(
         "This action needs explicit approval before the agent can continue in your workspace.",
       );
       return true;
     }
     if (choice === "once") {
-      console.log(await this.approve(undefined, sessionId));
+      this.emitMessage(await this.approve(undefined, sessionId));
       return true;
     }
     if (choice === "always") {
-      console.log(await this.approveAlways(undefined, sessionId));
+      this.emitMessage(await this.approveAlways(undefined, sessionId));
       return true;
     }
-    console.log(await this.deny(undefined, sessionId));
+    this.emitMessage(await this.deny(undefined, sessionId));
     return true;
   }
 
@@ -100,7 +110,7 @@ export class ApprovalCoordinator {
     };
     await store.saveApproval(approval);
     await options.onPending?.(approval.id);
-    this.onApprovalRequested?.(approval, formatApprovalRecord(approval));
+    this.options.onApprovalRequested?.(approval, formatApprovalRecord(approval));
 
     return new Promise((resolve) => {
       this.pendingApprovals.set(approval.id, {

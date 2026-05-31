@@ -232,6 +232,106 @@ export async function runDisplayTests(): Promise<void> {
   assert.ok(finalizeOut.finalizeLines?.some((line) => line.includes("我将阅读项目结构")));
   assert.equal(finalizeOut.lines.some((line) => line.includes("我将阅读项目结构")), false);
 
+  const dsmlJournal = new StepJournalRenderer({ level: 1, tty: false });
+  dsmlJournal.handleEvent(mockEvent("step.started", { step: 1, maxSteps: 4 }, 47));
+  const dsmlOut = dsmlJournal.handleEvent(
+    mockEvent("model.response", {
+      step: 1,
+      maxSteps: 4,
+      toolCallCount: 1,
+      textPreview: [
+        "before",
+        "<｜｜DSML｜｜tool_calls>",
+        '{"name":"read_file","arguments":{"path":"README.md"}}',
+        "</｜｜DSML｜｜tool_calls>",
+        "after",
+      ].join("\n"),
+      plannedToolCalls: [{ id: "t_dsml", name: "read_file", arguments: { path: "README.md" } }],
+    }, 48),
+  );
+  const dsmlText = dsmlOut.lines.join("\n");
+  assert.doesNotMatch(dsmlText, /DSML/);
+  assert.doesNotMatch(dsmlText, /<｜/);
+  assert.match(dsmlText, /before/);
+
+  const streamedDsmlJournal = new StepJournalRenderer({ level: 1, tty: false });
+  streamedDsmlJournal.handleEvent(mockEvent("step.started", { step: 11, maxSteps: 12 }, 53));
+  const streamedDsmlOut = streamedDsmlJournal.handleEvent(
+    mockEvent("model.response", {
+      step: 11,
+      maxSteps: 12,
+      toolCallCount: 1,
+      textPreview: [
+        "<",
+        "｜｜DSML｜｜",
+        "tool",
+        "_c",
+        "alls",
+        ">",
+        "<",
+        "｜｜DSML｜｜",
+        "invoke",
+        ' name="read_file">',
+        "<",
+        "｜｜DSML｜｜",
+        "parameter",
+        ' name="path"',
+        ' string="true">',
+        "packages/config/src/load-config.ts",
+        "</",
+        "｜｜DSML｜｜",
+        "parameter",
+        ">",
+        "</",
+        "｜｜DSML｜｜",
+        "invoke",
+        ">",
+        "</",
+        "｜｜DSML｜｜",
+        "tool",
+        "_c",
+        "alls",
+        ">",
+      ].join("\n"),
+      plannedToolCalls: [
+        { id: "t_stream", name: "read_file", arguments: { path: "packages/config/src/load-config.ts" } },
+      ],
+    }, 54),
+  );
+  const streamedDsmlText = streamedDsmlOut.lines.join("\n");
+  assert.doesNotMatch(streamedDsmlText, /DSML/);
+  assert.doesNotMatch(streamedDsmlText, /<｜/);
+  assert.match(streamedDsmlText, /read_file|load-config|我将/);
+
+  const flatJournal = new StepJournalRenderer({ level: 1, tty: true, flatActivityLog: true });
+  flatJournal.handleEvent(mockEvent("step.started", { step: 1, maxSteps: 4 }, 49));
+  flatJournal.handleEvent(
+    mockEvent("model.response", {
+      step: 1,
+      maxSteps: 4,
+      toolCallCount: 1,
+      textPreview: "我将读取 README。",
+      plannedToolCalls: [{ id: "t_flat", name: "read_file", arguments: { path: "README.md" } }],
+    }, 50),
+  );
+  const flatOut1 = flatJournal.handleEvent(
+    mockEvent("tool.call", {
+      step: 1,
+      toolCall: { id: "t_flat", name: "read_file", arguments: { path: "README.md" } },
+    }, 51),
+  );
+  const flatOut2 = flatJournal.handleEvent(
+    mockEvent("tool.result", {
+      step: 1,
+      success: true,
+      toolCall: { id: "t_flat", name: "read_file", arguments: { path: "README.md" } },
+    }, 52),
+  );
+  const flatText = [...flatOut1.lines, ...flatOut2.lines].join("\n");
+  assert.doesNotMatch(flatText, /^─/m);
+  assert.doesNotMatch(flatText, /^\│/m);
+  assert.ok((flatText.match(/read_file/g) ?? []).length <= 2);
+
   const reasoningFallbackJournal = new StepJournalRenderer({ level: 1, tty: true, paneWidth: 60 });
   reasoningFallbackJournal.handleEvent(mockEvent("step.started", { step: 1, maxSteps: 4 }, 24));
   reasoningFallbackJournal.handleEvent(mockEvent("model.request", { step: 1, maxSteps: 4 }, 25));
@@ -683,6 +783,7 @@ export async function runDisplayTests(): Promise<void> {
       toolCall: { id: "t5", name: "read_file", arguments: { path: "README.md" } },
     }, 44),
   );
+  const afterApprovalResolved = inputSafeChunks.length;
   await inputSafePrinter.onEvent(
     mockEvent(
       "model.reasoning.delta",
@@ -691,7 +792,7 @@ export async function runDisplayTests(): Promise<void> {
     ),
   );
   assert.ok(
-    inputSafeChunks.slice(-1)[0]?.includes("\r") ?? inputSafeChunks.join("").includes("\r"),
+    inputSafeChunks.slice(afterApprovalResolved).join("").includes("\r"),
     "preview resumes after approval.resolved",
   );
 
@@ -741,6 +842,11 @@ export async function runDisplayTests(): Promise<void> {
   assert.ok(!interactiveRunOutput.includes("\r"), "interactiveTerminal disables carriage returns");
   assert.ok(!/\x1b\[\d+A/.test(interactiveRunOutput), "interactiveTerminal disables cursor-up redraws");
   assert.ok(!/\x1b\[2K/.test(interactiveRunOutput), "interactiveTerminal disables in-place line clear");
+  assert.equal(
+    (interactiveRunOutput.match(/─{10,}/g) ?? []).length,
+    0,
+    "interactiveTerminal should not stack bordered activity panes",
+  );
 
   const replSafeChunks: string[] = [];
   const replSafeStream = {

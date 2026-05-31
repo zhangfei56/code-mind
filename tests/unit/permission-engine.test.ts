@@ -186,4 +186,65 @@ export async function runPermissionEngineTests(): Promise<void> {
     ),
   );
   assert.equal(askInstall.type, "ask");
+
+  const allowGlob = await engine.check(
+    createRequest({
+      id: "call_8",
+      name: "glob",
+      arguments: { pattern: "**/*.ts" },
+    }),
+  );
+  assert.equal(allowGlob.type, "allow");
+
+  const askWriteFile = await engine.check(
+    createRequest(
+      {
+        id: "call_9",
+        name: "write_file",
+        arguments: { path: "src/a.ts", content: "export {}\n" },
+      },
+      "edit",
+    ),
+  );
+  assert.equal(askWriteFile.type, "ask");
+
+  const denyWriteInAsk = await engine.check(
+    createRequest(
+      {
+        id: "call_10",
+        name: "search_replace",
+        arguments: {
+          path: "src/a.ts",
+          old_string: "old",
+          new_string: "new",
+        },
+      },
+      "ask",
+    ),
+  );
+  assert.equal(denyWriteInAsk.type, "deny");
+
+  const askDeleteInEdit = await engine.check(
+    createRequest(
+      {
+        id: "call_11",
+        name: "delete_file",
+        arguments: { path: "src/a.ts" },
+      },
+      "edit",
+    ),
+  );
+  assert.equal(askDeleteInEdit.type, "ask");
+
+  const askMoveInEdit = await engine.check(
+    createRequest(
+      {
+        id: "call_12",
+        name: "move_file",
+        arguments: { from: "src/a.ts", to: "src/b.ts" },
+      },
+      "edit",
+    ),
+  );
+  assert.equal(askMoveInEdit.type, "ask");
 }

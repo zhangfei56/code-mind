@@ -153,17 +153,30 @@ replace_result
 packages/execution/src/tools/
 ```
 
-默认工具包括：
+默认工具（`registerDefaultTools`，见 `default-tools.ts`）包括：
 
 ```text
 list_dir
 read_file
+glob
 grep
-git_status / git_diff / git_log / git_show / git_changed_files
+git_status / git_diff / git_log / git_show / git_changed_files / git_restore_file
 lsp_diagnostics
 worktree_create / worktree_status / worktree_diff / worktree_cleanup
 apply_patch
+write_file
+search_replace
+delete_file
+move_file
 run_shell
+```
+
+另由 runtime / composition **动态注册**（不在 `default-tools.ts`）：
+
+```text
+enter_plan_mode / exit_plan_mode   # plan-mode-tools.ts；runtime 处理
+run_subagent                         # composeAgentLoop；需 model + subagent profile
+mcp__{server}__{tool}                # MCP adapter；stdio 连接
 ```
 
 执行结果：

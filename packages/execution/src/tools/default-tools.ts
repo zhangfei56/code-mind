@@ -1,6 +1,11 @@
 import type { ToolRegistry } from "./registry.js";
 import { applyPatchTool } from "./apply-patch.js";
+import { deleteFileTool } from "./delete-file.js";
+import { globTool } from "./glob.js";
 import { grepTool } from "./grep.js";
+import { moveFileTool } from "./move-file.js";
+import { searchReplaceTool } from "./search-replace.js";
+import { writeFileTool } from "./write-file.js";
 import {
   gitChangedFilesTool,
   gitDiffTool,
@@ -23,6 +28,7 @@ import {
 export function registerDefaultTools(registry: ToolRegistry): void {
   registry.register(listDirTool);
   registry.register(readFileTool);
+  registry.register(globTool);
   registry.register(grepTool);
   registry.register(gitStatusTool);
   registry.register(gitDiffTool);
@@ -36,5 +42,9 @@ export function registerDefaultTools(registry: ToolRegistry): void {
   registry.register(worktreeDiffTool);
   registry.register(worktreeCleanupTool);
   registry.register(applyPatchTool);
+  registry.register(writeFileTool);
+  registry.register(searchReplaceTool);
+  registry.register(deleteFileTool);
+  registry.register(moveFileTool);
   registry.register(runShellTool);
 }

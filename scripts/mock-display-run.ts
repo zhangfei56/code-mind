@@ -26,7 +26,7 @@ function assertL0(stderr: string, stdout: string): void {
   assert.doesNotMatch(stderr, /Step 1\/12 Inspect project/);
   assert.match(stderr, /list_dir/);
   assert.match(stderr, /read_file.*README/);
-  assert.match(stderr, /read_file.*cli-guide/);
+  assert.match(stderr, /read_file.*user-guide/);
   assert.match(stderr, /先读 README/);
   assert.doesNotMatch(stderr, /结论：/);
   assert.doesNotMatch(stderr, /0 tools/);

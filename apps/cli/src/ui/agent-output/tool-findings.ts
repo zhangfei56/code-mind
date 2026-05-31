@@ -61,8 +61,8 @@ function formatReadDiscovery(event: ToolFinishedLike): string | null {
   if (base === "package.json") {
     return "  ✓ Found package manifest";
   }
-  if (base === "implementation.md") {
-    return `  ✓ Read implementation status in ${shortPath(path)}`;
+  if (base === "packages.md") {
+    return `  ✓ Read package map in ${shortPath(path)}`;
   }
   if (/^docs\//i.test(path)) {
     return `  ✓ Read project doc ${shortPath(path)}`;

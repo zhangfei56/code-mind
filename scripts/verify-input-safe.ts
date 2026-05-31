@@ -87,9 +87,9 @@ async function verifyInteractiveRunApprovalSequence(): Promise<void> {
 
   const approvalText = chunks.join("");
   assert.match(approvalText, /Approval required/);
-  assert.match(approvalText, /Allow\? \(answer at the prompt below\)/);
   assert.match(approvalText, /Risk/);
   assert.match(approvalText, /Executes a shell command/);
+  assert.doesNotMatch(approvalText, /Allow\?/);
 
   await printer.onEvent(
     mockEvent("approval.resolved", {

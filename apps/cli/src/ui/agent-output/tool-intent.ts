@@ -17,13 +17,13 @@ export function describeToolIntent(toolCall: ToolCall): string {
       if (/README/i.test(path)) {
         return `Read project overview (${short}) to learn layout and entry points`;
       }
-      if (/implementation\.md/i.test(path)) {
-        return `Read implementation status (${short}) to see what is built vs planned`;
+      if (/packages\.md/i.test(path)) {
+        return `Read package map (${short}) to see what is built vs planned`;
       }
-      if (/architecture\.md/i.test(path)) {
+      if (/principles\.md/i.test(path) || /data-model\.md/i.test(path)) {
         return `Read architecture notes (${short}) before tracing code paths`;
       }
-      if (/cli-guide\.md/i.test(path)) {
+      if (/user-guide\.md/i.test(path)) {
         return `Read CLI usage (${short}) for runtime behavior`;
       }
       if (/^docs\//i.test(path)) {

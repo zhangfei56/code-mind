@@ -3,7 +3,7 @@
 > scope: **capability-selection**  
 > 本文说明用户问题进入系统后，如何决定是否启用 skill 或 plugin。
 
-**实现状态**：registry 与加载已在 `@code-mind/capabilities`（`skill-engine.ts`、`plugin-manager.ts`、`loader.ts`）；结构化 `SelectedCapabilities` 与显式/语义/工作流触发已在 `capability-selector.ts` 实现；语义触发阈值为 partial（无 embedding 召回）。**embedding 召回为 P3+ 增强项**，不阻塞 run 主链（见 [implementation.md §1.5](../implementation.md#15-已知缺口下一批优先)）。
+**实现状态**：registry 与加载已在 `@code-mind/capabilities`（`skill-engine.ts`、`plugin-manager.ts`、`loader.ts`）；结构化 `SelectedCapabilities` 与显式/语义/工作流触发已在 `capability-selector.ts` 实现；语义触发阈值为 partial（无 embedding 召回）。**embedding 召回为 P3+ 增强项**，不阻塞 run 主链（见 [backlog.md](../../backlog.md)）。
 
 **Public owner**：`packages/capabilities/src/`（勿在 `packages/core` 内新增 extensions 实现）。
 

@@ -11,12 +11,39 @@ import {
   syncModifiedFilesFromWorkspace,
 } from "../change-tracking.js";
 import { runAutomaticVerification } from "../verification.js";
-import type { ToolCallContext, ToolCallHandlerSlice, ToolCallOutcome } from "./types.js";
+import type { ToolCallHandlerSlice, ToolCallContext, ToolCallOutcome } from "./types.js";
 import { buildToolDisplayExtras } from "./types.js";
 import {
   createApprovalCallbacks,
   handleRejectedToolCall,
 } from "./authorization.js";
+
+const FILE_EDIT_TOOLS = new Set([
+  "apply_patch",
+  "write_file",
+  "search_replace",
+  "delete_file",
+  "move_file",
+]);
+
+function isFileEditTool(toolName: string): boolean {
+  return FILE_EDIT_TOOLS.has(toolName);
+}
+
+function readPatchArgument(toolCall: ToolCallContext["toolCall"]): string | undefined {
+  return typeof toolCall.arguments.patch === "string" ? toolCall.arguments.patch : undefined;
+}
+
+function resolvePatchHookPayload(
+  toolCall: ToolCallContext["toolCall"],
+  result?: ToolResult,
+): { patch: string } | Record<string, never> {
+  if (result && typeof result.metadata?.diffPreview === "string") {
+    return { patch: result.metadata.diffPreview };
+  }
+  const patch = readPatchArgument(toolCall);
+  return patch === undefined ? {} : { patch };
+}
 
 export async function runPreExecutionHooks(
   deps: ToolCallHandlerSlice,
@@ -74,7 +101,7 @@ export async function runToolSpecificPreHooks(
   ctx: Pick<ToolCallContext, "sessionStore" | "session" | "toolCall" | "input">,
 ): Promise<void> {
   const { sessionStore, session, toolCall, input } = ctx;
-  if (toolCall.name === "apply_patch") {
+  if (isFileEditTool(toolCall.name)) {
     await runHooks(
       deps.lifecycle,
       "BeforePatchApply",
@@ -86,9 +113,7 @@ export async function runToolSpecificPreHooks(
         projectPath: session.workspaceRoot,
         mode: session.task.mode,
         toolCall,
-        ...(typeof toolCall.arguments.patch === "string"
-          ? { patch: toolCall.arguments.patch }
-          : {}),
+        ...resolvePatchHookPayload(toolCall),
       },
       input,
     );
@@ -155,11 +180,11 @@ export async function handlePostToolChangeTracking(
     return;
   }
 
-  if (toolCall.name === "apply_patch" && typeof result.metadata?.filePath === "string") {
+  if (isFileEditTool(toolCall.name) && typeof result.metadata?.filePath === "string") {
     recordToolModifiedFile(runState.progress.modifiedFiles, result.metadata.filePath);
   }
 
-  if (toolCall.name === "apply_patch" || toolCall.name === "run_shell") {
+  if (isFileEditTool(toolCall.name) || toolCall.name === "run_shell") {
     await syncModifiedFilesFromWorkspace(session.workspaceRoot, runState.progress.modifiedFiles);
   }
 }
@@ -171,7 +196,7 @@ export async function handlePostPatchVerification(
 ): Promise<void> {
   const { session, input, runState, strategy, toolCall, stepNumber, sessionStore } = ctx;
   if (
-    toolCall.name !== "apply_patch" ||
+    !isFileEditTool(toolCall.name) ||
     !result.success ||
     typeof result.metadata?.filePath !== "string"
   ) {
@@ -235,7 +260,7 @@ export async function runPostExecutionHooks(
   );
 
   if (
-    toolCall.name === "apply_patch" &&
+    isFileEditTool(toolCall.name) &&
     result.success &&
     typeof result.metadata?.filePath === "string"
   ) {
@@ -257,9 +282,7 @@ export async function runPostExecutionHooks(
         mode: session.task.mode,
         toolCall,
         toolResult: result,
-        ...(typeof toolCall.arguments.patch === "string"
-          ? { patch: toolCall.arguments.patch }
-          : {}),
+        ...resolvePatchHookPayload(toolCall, result),
       },
       ctx.input,
     );

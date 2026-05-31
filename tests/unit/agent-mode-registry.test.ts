@@ -5,6 +5,7 @@ import type { AgentMode, Tool } from "@code-mind/shared";
 const READ_TOOLS = [
   "read_file",
   "list_dir",
+  "glob",
   "grep",
   "git_status",
   "git_diff",
@@ -17,6 +18,10 @@ const PLAN_ONLY_TOOLS = ["git_changed_files", "worktree_status", "worktree_diff"
 
 const WRITE_TOOLS = [
   "apply_patch",
+  "write_file",
+  "search_replace",
+  "delete_file",
+  "move_file",
   "run_shell",
   "git_restore_file",
   "worktree_create",

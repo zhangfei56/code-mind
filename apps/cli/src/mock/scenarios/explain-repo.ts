@@ -133,7 +133,7 @@ export const explainRepoScenario: MockScenario = {
           {
             id: "tc_3",
             name: "read_file",
-            arguments: { path: "docs/cli-guide.md" },
+            arguments: { path: "docs/user-guide.md" },
           },
         ],
       },
@@ -167,7 +167,7 @@ export const explainRepoScenario: MockScenario = {
         toolCall: {
           id: "tc_3",
           name: "read_file",
-          arguments: { path: "docs/cli-guide.md" },
+          arguments: { path: "docs/user-guide.md" },
         },
       },
     }),
@@ -180,7 +180,7 @@ export const explainRepoScenario: MockScenario = {
         toolCall: {
           id: "tc_3",
           name: "read_file",
-          arguments: { path: "docs/cli-guide.md" },
+          arguments: { path: "docs/user-guide.md" },
         },
         success: true,
         durationMs: 9,

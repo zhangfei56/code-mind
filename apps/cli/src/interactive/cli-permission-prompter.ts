@@ -1,11 +1,13 @@
 import type { PermissionPrompter } from "@code-mind/core";
 import { createId } from "@code-mind/shared";
 import { promptApprovalDecision } from "../ui/prompt.js";
+import type { TerminalComposer } from "../ui/terminal-composer.js";
 import { alwaysAllowKey } from "./approval-utils.js";
 
 export interface CliPermissionPrompterOptions {
   onBeforePrompt?: () => void;
   onAfterPrompt?: () => void;
+  composer?: TerminalComposer;
 }
 
 export class CliPermissionPrompter implements PermissionPrompter {
@@ -29,7 +31,12 @@ export class CliPermissionPrompter implements PermissionPrompter {
 
     this.options.onBeforePrompt?.();
     try {
-      const choice = await promptApprovalDecision();
+      const choice = await promptApprovalDecision({
+        ...(this.options.composer === undefined ? {} : { composer: this.options.composer }),
+        ...(this.options.composer?.output === undefined
+          ? {}
+          : { output: this.options.composer.output }),
+      });
       if (choice === "always") {
         this.alwaysAllowed.add(key);
         return { approved: true, approvalId };

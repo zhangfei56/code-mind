@@ -36,6 +36,22 @@ export class SafetyGuard {
     }
 
     if (
+      toolCall.name === "search_replace" &&
+      typeof toolCall.arguments.old_string === "string" &&
+      typeof toolCall.arguments.new_string === "string"
+    ) {
+      const oldLines = toolCall.arguments.old_string.split("\n").length;
+      const newLines = toolCall.arguments.new_string.split("\n").length;
+      const deletedLines = Math.max(0, oldLines - newLines);
+      if (deletedLines >= LARGE_DELETION_THRESHOLD) {
+        return {
+          type: "ask",
+          reason: `search_replace removes ${deletedLines} lines and requires approval.`,
+        };
+      }
+    }
+
+    if (
       toolCall.name === "run_shell" &&
       typeof toolCall.arguments.command === "string"
     ) {

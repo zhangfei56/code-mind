@@ -206,6 +206,25 @@ function formatSearchBlock(event: ToolFinishedLike, options: ToolBlockOptions): 
   return lines;
 }
 
+function formatGlobBlock(event: ToolFinishedLike, options: ToolBlockOptions): string[] {
+  const args = toolArgs(event.toolCall);
+  const pattern = typeof args.pattern === "string" ? args.pattern : "";
+  const count = event.outputPreview
+    ? event.outputPreview.split("\n").filter((line) => line.trim().length > 0).length
+    : 0;
+
+  if (options.level === 0) {
+    const glyph = event.success ? "✓" : "×";
+    return [`  ${glyph} Glob "${pattern}" — ${count} match${count === 1 ? "" : "es"}`];
+  }
+
+  const lines: string[] = ["Glob", `  pattern: "${pattern}"`, `  matches: ${count}`];
+  if (!event.success && event.error) {
+    lines.push(`  × ${event.error}`);
+  }
+  return lines;
+}
+
 function formatGenericBlock(event: ToolFinishedLike, options: ToolBlockOptions): string[] {
   if (event.toolCall.name.startsWith("mcp_")) {
     return formatMcpBlock(event, options);
@@ -327,9 +346,15 @@ export function formatToolBlock(event: ToolFinishedLike, options: ToolBlockOptio
       return formatListBlock(event, options);
     case "grep":
       return formatSearchBlock(event, options);
+    case "glob":
+      return formatGlobBlock(event, options);
     case "run_shell":
       return formatRunBlock(event, options);
     case "apply_patch":
+    case "write_file":
+    case "search_replace":
+    case "delete_file":
+    case "move_file":
       return formatEditBlock(event, options);
     case "run_subagent":
       return formatSubagentBlock(event, options);
@@ -347,6 +372,17 @@ export function isHighRiskTool(toolCall: ToolCall): boolean {
   if (toolCall.name === "apply_patch") {
     const path = resolvePatchPath(args.patch);
     return path === undefined || /(^|\/)(\.env|secrets\/)/.test(path);
+  }
+  if (toolCall.name === "write_file" || toolCall.name === "search_replace" || toolCall.name === "delete_file") {
+    const path = typeof args.path === "string" ? args.path : "";
+    return path.length === 0 || /(^|\/)(\.env|secrets\/)/.test(path);
+  }
+  if (toolCall.name === "move_file") {
+    const from = typeof args.from === "string" ? args.from : "";
+    const to = typeof args.to === "string" ? args.to : "";
+    return [from, to].some(
+      (path) => path.length === 0 || /(^|\/)(\.env|secrets\/)/.test(path),
+    );
   }
   return toolCall.name.startsWith("mcp_");
 }
@@ -366,6 +402,14 @@ export function riskHintForTool(toolCall: ToolCall): string {
     }
     case "apply_patch":
       return "Modifies workspace files.";
+    case "write_file":
+      return "Creates or overwrites a workspace file.";
+    case "search_replace":
+      return "Replaces text in a workspace file.";
+    case "delete_file":
+      return "Deletes a workspace file.";
+    case "move_file":
+      return "Moves or renames a workspace file.";
     default:
       return "Requires explicit approval before proceeding.";
   }
@@ -381,6 +425,23 @@ export function formatApprovalAction(toolCall: ToolCall): string[] {
     case "apply_patch": {
       const path = resolvePatchPath(args.patch);
       return path ? ["  Apply patch:", `  ${path}`] : ["  Apply patch"];
+    }
+    case "write_file": {
+      const path = typeof args.path === "string" ? args.path : "unknown file";
+      return ["  Write file:", `  ${path}`];
+    }
+    case "search_replace": {
+      const path = typeof args.path === "string" ? args.path : "unknown file";
+      return ["  Search/replace:", `  ${path}`];
+    }
+    case "delete_file": {
+      const path = typeof args.path === "string" ? args.path : "unknown file";
+      return ["  Delete file:", `  ${path}`];
+    }
+    case "move_file": {
+      const from = typeof args.from === "string" ? args.from : "unknown file";
+      const to = typeof args.to === "string" ? args.to : "unknown file";
+      return ["  Move file:", `  ${from} → ${to}`];
     }
     case "run_subagent": {
       const agentName = typeof args.agentName === "string" ? args.agentName : "subagent";

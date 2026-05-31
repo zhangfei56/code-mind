@@ -325,16 +325,14 @@ export function renderApprovalBlock(
   );
 
   if (promptStyle === "display") {
-    lines.push("Allow?", "  [y] yes, once  [a] always allow  [n] no  [e] explain", "");
-  } else if (promptStyle === "inline") {
     lines.push(
-      "Allow? (answer at the prompt below)",
-      "  [y] once  [a] always  [n] no  [e] explain",
+      colorApprovalLabel("Reply", stream),
+      ...wrapPrefixedBlock("Type y/a/n/e at the approval › prompt below.", width),
       "",
     );
   } else if (promptStyle === "repl") {
     lines.push(
-      "Reply at prompt ›",
+      "Reply at approval ›",
       "  [y] once  [a] always  [n] no  [e] explain  ·  /approve  /deny",
       "",
     );

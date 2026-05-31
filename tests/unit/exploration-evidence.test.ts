@@ -34,10 +34,17 @@ export function runExplorationEvidenceTests(): void {
   assert.equal(evidence.entryFileRead, true);
   assert.equal(evidence.verificationCommandKnown, true);
 
+  updateExplorationEvidence(
+    evidence,
+    { id: "tc_4", name: "glob", arguments: { pattern: "**/*.ts" } },
+    { success: true, output: "src/a.ts" },
+  );
+  assert.equal(evidence.candidateFileLocated, true);
+
   const before = { ...evidence };
   updateExplorationEvidence(
     evidence,
-    { id: "tc_4", name: "read_file", arguments: { path: "math.ts" } },
+    { id: "tc_5", name: "read_file", arguments: { path: "math.ts" } },
     { success: true, output: "legacy" },
   );
   assert.deepEqual(evidence, before, "bare math.ts should not count as candidate file");

@@ -1,5 +1,4 @@
-import { createInterface } from "../ui/readline-interface.js";
-import { stdin as input, stdout as output } from "node:process";
+import { stderr as composerOutput } from "node:process";
 import { resolve } from "node:path";
 import { loadConfigForModel } from "@code-mind/config";
 import { createModelProvider } from "@code-mind/models";
@@ -27,6 +26,7 @@ import {
 } from "../ui/repl/repl-display.js";
 import { formatFinalText } from "../ui/final-text.js";
 import { theme } from "../ui/theme.js";
+import { TerminalComposer } from "../ui/terminal-composer.js";
 import {
   applyRecommendedMaxSteps,
   createOrchestrationSessionStore,
@@ -109,8 +109,12 @@ export async function startInteractiveShell(options: StartInteractiveOptions): P
     ...createEmptyActivityState(),
   };
 
-  const rl = createInterface({ input, output });
-  const approvalManager = new ApprovalCoordinator(state.cwd);
+  const composer = new TerminalComposer({ promptOutput: composerOutput });
+  const approvalManager = new ApprovalCoordinator(state.cwd, {
+    emitMessage: (message) => {
+      composer.writeAbove(`${message}\n`);
+    },
+  });
   let activeTurnAbortController: AbortController | undefined;
   let activeTurnPromise: Promise<void> | undefined;
   console.log(renderCliLogo().trimEnd());
@@ -120,106 +124,121 @@ export async function startInteractiveShell(options: StartInteractiveOptions): P
   }
   console.log(renderReplComposerHints());
 
+  const refreshComposerPrompt = (): void => {
+    composer.setPrompt(
+      approvalManager.hasPendingApprovals() ? buildApprovalPrompt() : buildPrompt(state),
+    );
+  };
+
   try {
-    while (true) {
-      if (activeTurnPromise && !approvalManager.hasPendingApprovals()) {
-        await activeTurnPromise;
-        continue;
-      }
+    composer.install();
+    refreshComposerPrompt();
+    return await new Promise<number>((resolve) => {
+      composer.startLineListener(async (answer) => {
+        const line = answer.trim();
 
-      const prompt = approvalManager.hasPendingApprovals()
-        ? buildApprovalPrompt()
-        : buildPrompt(state);
-      const answer = await rl.question(prompt);
-      const line = answer.trim();
-      if (!line) {
-        if (!state.verbose && state.replThinkingExpand) {
-          console.log(state.replThinkingExpand());
+        if (!line) {
+          if (!state.verbose && state.replThinkingExpand) {
+            composer.writeAbove(`${state.replThinkingExpand()}\n`);
+          }
+          refreshComposerPrompt();
+          return;
         }
-        continue;
-      }
 
-      if (!line.startsWith("/") && approvalManager.hasPendingApprovals()) {
-        const handled = await approvalManager.resolveFromUserInput(line, state.sessionId);
-        if (handled) {
-          continue;
-        }
-        console.log(
-          "Approval pending — reply [y] once, [a] always, [n] no, or use /approve /deny.",
-        );
-        continue;
-      }
-
-      if (line.startsWith("/")) {
-        const shouldExit = await runInteractiveCommand(
-          state,
-          approvalManager,
-          activeTurnAbortController,
-          line,
-        );
-        if (shouldExit) {
-          return 0;
-        }
-        continue;
-      }
-
-      activeTurnAbortController = new AbortController();
-      state.hasActiveTurn = true;
-      state.sessionStatus = "running";
-      state.currentStep = 0;
-      state.currentActivity = "thinking";
-      state.currentAction = "starting turn";
-      state.recentEvents = [];
-      activeTurnPromise = runInteractiveTurn(
-        state,
-        line,
-        approvalManager,
-        activeTurnAbortController.signal,
-        (status) => {
-          state.sessionStatus = status;
-        },
-        )
-        .then(({ task, result, contentStreamed }) => {
-          if (state.verbose) {
-            console.log(
-              renderTurnResult(result, task, 2, {
-                skipBody: contentStreamed,
-              }),
+        if (!line.startsWith("/") && approvalManager.hasPendingApprovals()) {
+          const handled = await approvalManager.resolveFromUserInput(line, state.sessionId);
+          if (!handled) {
+            composer.writeAbove(
+              "Approval pending — reply [y] once, [a] always, [n] no, or use /approve /deny.\n",
             );
-            console.log(renderInteractiveActivityPanel(state));
-          } else {
-            if (!contentStreamed) {
-              const body = formatFinalText(result.summary ?? result.finalText, { level: 1 });
-              if (body.trim()) {
-                console.log(`${theme.blue("assistant")}\n  ${body.trim()}\n`);
+          }
+          refreshComposerPrompt();
+          return;
+        }
+
+        if (line.startsWith("/")) {
+          const shouldExit = await runInteractiveCommand(
+            state,
+            approvalManager,
+            activeTurnAbortController,
+            line,
+            composer,
+          );
+          if (shouldExit) {
+            composer.teardown();
+            resolve(0);
+            return;
+          }
+          refreshComposerPrompt();
+          return;
+        }
+
+        if (activeTurnPromise && !approvalManager.hasPendingApprovals()) {
+          composer.writeAbove("Turn running — wait for completion or /abort.\n");
+          refreshComposerPrompt();
+          return;
+        }
+
+        activeTurnAbortController = new AbortController();
+        state.hasActiveTurn = true;
+        state.sessionStatus = "running";
+        state.currentStep = 0;
+        state.currentActivity = "thinking";
+        state.currentAction = "starting turn";
+        state.recentEvents = [];
+        activeTurnPromise = runInteractiveTurn(
+          state,
+          line,
+          approvalManager,
+          activeTurnAbortController.signal,
+          composer,
+          (status) => {
+            state.sessionStatus = status;
+          },
+        )
+          .then(({ task, result, contentStreamed }) => {
+            if (state.verbose) {
+              composer.writeAbove(
+                `${renderTurnResult(result, task, 2, { skipBody: contentStreamed })}\n`,
+              );
+              composer.writeAbove(`${renderInteractiveActivityPanel(state)}\n`);
+            } else {
+              if (!contentStreamed) {
+                const body = formatFinalText(result.summary ?? result.finalText, { level: 1 });
+                if (body.trim()) {
+                  composer.writeAbove(`${theme.blue("assistant")}\n  ${body.trim()}\n\n`);
+                }
               }
+              composer.writeAbove(`${renderReplHints()}\n`);
             }
-            console.log(renderReplHints());
-          }
-          state.sessionId = result.sessionId;
-          state.sessionStatus = getEffectiveResultStatus(result);
-          state.currentStep = result.steps;
-          state.currentActivity =
-            (result.metadata?.activitySummary?.last as ActivityKind | undefined) ??
-            state.currentActivity;
-          state.currentAction = getEffectiveResultStatus(result);
-        })
-        .catch((error: unknown) => {
-          console.error(error);
-          state.sessionStatus = "failed";
-          state.currentAction = "failed";
-        })
-        .finally(() => {
-          state.hasActiveTurn = false;
-          activeTurnAbortController = undefined;
-          activeTurnPromise = undefined;
-          if (state.sessionStatus === "running" || state.sessionStatus === "retrying") {
-            state.sessionStatus = "idle";
-          }
-        });
-    }
+            state.sessionId = result.sessionId;
+            state.sessionStatus = getEffectiveResultStatus(result);
+            state.currentStep = result.steps;
+            state.currentActivity =
+              (result.metadata?.activitySummary?.last as ActivityKind | undefined) ??
+              state.currentActivity;
+            state.currentAction = getEffectiveResultStatus(result);
+          })
+          .catch((error: unknown) => {
+            const message = error instanceof Error ? error.message : String(error);
+            composer.writeAbove(`${message}\n`);
+            state.sessionStatus = "failed";
+            state.currentAction = "failed";
+          })
+          .finally(() => {
+            state.hasActiveTurn = false;
+            activeTurnAbortController = undefined;
+            activeTurnPromise = undefined;
+            if (state.sessionStatus === "running" || state.sessionStatus === "retrying") {
+              state.sessionStatus = "idle";
+            }
+            refreshComposerPrompt();
+          });
+        refreshComposerPrompt();
+      });
+    });
   } finally {
-    rl.close();
+    composer.teardown();
   }
 }
 
@@ -236,18 +255,26 @@ async function runInteractiveCommand(
   approvalManager: ApprovalCoordinator,
   activeTurnAbortController: AbortController | undefined,
   inputLine: string,
+  composer?: TerminalComposer,
 ): Promise<boolean> {
+  const emit = (text: string): void => {
+    if (composer?.isPinned()) {
+      composer.writeAbove(`${text}\n`);
+      return;
+    }
+    console.log(text);
+  };
   const command = parseInteractiveCommand(inputLine);
   switch (command.type) {
     case "help":
-      console.log(renderInteractiveHelp());
+      emit(renderInteractiveHelp());
       return false;
     case "exit":
       return true;
     case "status":
-      console.log(renderInteractiveStatus(state));
-      console.log("");
-      console.log(renderInteractiveActivityPanel(state));
+      emit(renderInteractiveStatus(state));
+      emit("");
+      emit(renderInteractiveActivityPanel(state));
       return false;
     case "new":
       state.sessionId = undefined;
@@ -257,35 +284,35 @@ async function runInteractiveCommand(
       state.currentAction = "idle";
       state.recentEvents = [];
       Object.assign(state, createEmptyActivityState());
-      console.log("Started a new interactive session context.");
+      emit("Started a new interactive session context.");
       return false;
     case "sessions":
-      console.log(await renderSessionList(state.cwd));
+      emit(await renderSessionList(state.cwd));
       return false;
     case "abort":
       if (!activeTurnAbortController || !state.hasActiveTurn) {
-        console.log("No active turn to abort.");
+        emit("No active turn to abort.");
         return false;
       }
       activeTurnAbortController.abort(new Error("Aborted by user."));
       state.sessionStatus = "cancelled";
-      console.log("Abort requested.");
+      emit("Abort requested.");
       return false;
     case "approvals":
       if (!state.sessionId) {
-        console.log(await approvalManager.renderPendingApprovals());
+        emit(await approvalManager.renderPendingApprovals());
         return false;
       }
-      console.log(await approvalManager.renderPendingApprovals(state.sessionId));
+      emit(await approvalManager.renderPendingApprovals(state.sessionId));
       return false;
     case "approve":
-      console.log(await approvalManager.approve(command.approvalId, state.sessionId));
+      emit(await approvalManager.approve(command.approvalId, state.sessionId));
       return false;
     case "approve_always":
-      console.log(await approvalManager.approveAlways(command.approvalId, state.sessionId));
+      emit(await approvalManager.approveAlways(command.approvalId, state.sessionId));
       return false;
     case "deny":
-      console.log(await approvalManager.deny(command.approvalId, state.sessionId));
+      emit(await approvalManager.deny(command.approvalId, state.sessionId));
       return false;
     case "resume": {
       const manifest = await createOrchestrationSessionStore(state.cwd).readManifest(
@@ -297,12 +324,12 @@ async function runInteractiveCommand(
       state.sessionStatus = manifest.status;
       state.currentActivity = "thinking";
       state.currentAction = `resumed ${manifest.status}`;
-      console.log(`Resumed session ${manifest.id}.`);
+      emit(`Resumed session ${manifest.id}.`);
       return false;
     }
     case "model":
       state.model = command.model;
-      console.log(`Model set to ${command.model}.`);
+      emit(`Model set to ${command.model}.`);
       return false;
     case "cwd":
       state.cwd = resolveWorkspace(command.cwd);
@@ -314,36 +341,36 @@ async function runInteractiveCommand(
       state.currentAction = "idle";
       state.recentEvents = [];
       Object.assign(state, createEmptyActivityState());
-      console.log(`Workspace set to ${state.cwd}.`);
+      emit(`Workspace set to ${state.cwd}.`);
       return false;
     case "max_steps":
       state.maxSteps = command.maxSteps;
-      console.log(`Max steps set to ${command.maxSteps}.`);
+      emit(`Max steps set to ${command.maxSteps}.`);
       return false;
     case "verbose":
       state.verbose = !state.verbose;
-      console.log(`Verbose progress ${state.verbose ? "enabled" : "disabled"}.`);
+      emit(`Verbose progress ${state.verbose ? "enabled" : "disabled"}.`);
       return false;
     case "diff":
-      console.log(await renderInteractiveDiff(state));
+      emit(await renderInteractiveDiff(state));
       return false;
     case "context":
-      console.log(renderInteractiveContext(state));
+      emit(renderInteractiveContext(state));
       return false;
     case "cost":
-      console.log(renderInteractiveCost(state));
+      emit(renderInteractiveCost(state));
       return false;
     case "tools":
-      console.log(await renderInteractiveTools(state.mode));
+      emit(await renderInteractiveTools(state.mode));
       return false;
     case "permissions":
-      console.log(renderInteractivePermissions(state.mode));
+      emit(renderInteractivePermissions(state.mode));
       return false;
     case "expand":
-      console.log(renderInteractiveExpand(state));
+      emit(renderInteractiveExpand(state));
       return false;
     case "reason":
-      console.log(state.replReasonExpand?.() ?? "No reasoning summary available yet.");
+      emit(state.replReasonExpand?.() ?? "No reasoning summary available yet.");
       return false;
   }
 }
@@ -353,6 +380,7 @@ async function runInteractiveTurn(
   text: string,
   approvalManager: ApprovalCoordinator,
   abortSignal: AbortSignal,
+  composer: TerminalComposer,
   onStatusChange: (status: SessionStatus) => void,
 ): Promise<{ task: UserTask; result: AgentResult; contentStreamed: boolean }> {
   const config = loadConfigForModel(state.model);
@@ -387,7 +415,7 @@ async function runInteractiveTurn(
     },
   });
   const gitSummary = await getGitSummary(state.cwd);
-  console.log(renderReplUserLine(text));
+  composer.writeAbove(`${renderReplUserLine(text)}\n`);
   const printer = new ProgressPrinter({
     level: resolveDisplayMode({
       verbose: state.verbose,
@@ -395,6 +423,7 @@ async function runInteractiveTurn(
     }),
     surface: state.verbose ? "run" : "repl",
     interactiveTerminal: true,
+    terminalComposer: composer,
     replContext: {
       mode: state.mode,
       model: state.model ?? provider.name,
@@ -424,6 +453,13 @@ async function runInteractiveTurn(
       onEvent: async (event) => {
         applyInteractiveEvent(state, event);
         await printer.onEvent(event);
+        if (event.kind === "approval.requested") {
+          composer.setPrompt(buildApprovalPrompt());
+          composer.refreshPrompt();
+        } else if (event.kind === "approval.resolved") {
+          composer.setPrompt(buildPrompt(state));
+          composer.refreshPrompt();
+        }
         const shellOutput = printer.getLastShellOutput();
         if (shellOutput) {
           state.lastShellOutput = shellOutput;

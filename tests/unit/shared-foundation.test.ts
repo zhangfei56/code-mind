@@ -33,6 +33,9 @@ export function runSharedFoundationTests(): void {
   });
   assert.equal(readCall, "reading");
   assert.equal(toolActivityBucket("grep"), "search");
+  assert.equal(toolActivityBucket("glob"), "search");
+  assert.equal(toolActivityBucket("write_file"), "edit");
+  assert.equal(toolActivityBucket("delete_file"), "edit");
   assert.equal(activityLabel("thinking"), "Thinking");
 
   const patch = parsePatch(`*** Begin Patch

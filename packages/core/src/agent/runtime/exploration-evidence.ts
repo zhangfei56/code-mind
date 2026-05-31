@@ -67,7 +67,7 @@ export function updateExplorationEvidence(
     return;
   }
 
-  if (toolCall.name === "grep") {
+  if (toolCall.name === "grep" || toolCall.name === "glob") {
     markCandidateFileLocated(evidence);
   }
 }

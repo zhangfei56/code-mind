@@ -63,6 +63,31 @@ function isDefaultAutoEditablePath(path: string): boolean {
   );
 }
 
+function getWritePathDecision(
+  path: string,
+  mode: AgentMode,
+): PermissionDecision {
+  if (isDeniedWritePath(path)) {
+    return { type: "deny", reason: `Write target "${path}" is blocked by file policy.` };
+  }
+
+  if (mode === "edit") {
+    return { type: "ask", reason: "File write requires approval in edit mode." };
+  }
+
+  if (mode === "agent") {
+    if (isAskWritePath(path)) {
+      return { type: "ask", reason: `Write target "${path}" requires approval in agent mode.` };
+    }
+    if (isDefaultAutoEditablePath(path)) {
+      return { type: "allow" };
+    }
+    return { type: "ask", reason: `Write target "${path}" is outside the default agent allowlist.` };
+  }
+
+  return patchDecision(mode);
+}
+
 function getPatchPathDecision(
   path: string,
   mode: AgentMode,
@@ -126,12 +151,59 @@ function matchesPlanDraftPath(planDraftRelativePath: string, candidatePath: stri
   );
 }
 
+function getPlanModeWriteDecision(
+  path: string,
+  planDraftRelativePath: string,
+): PermissionDecision {
+  if (matchesPlanDraftPath(planDraftRelativePath, path)) {
+    return { type: "allow" };
+  }
+  return {
+    type: "deny",
+    reason: `In plan mode, writes are only allowed for the plan draft at "${planDraftRelativePath}".`,
+  };
+}
+
+function mergeWritePathDecisions(
+  decisions: PermissionDecision[],
+): PermissionDecision {
+  if (decisions.some((decision) => decision.type === "deny")) {
+    return (
+      decisions.find((decision) => decision.type === "deny") ?? {
+        type: "deny",
+        reason: "File write is blocked by policy.",
+      }
+    );
+  }
+  if (decisions.some((decision) => decision.type === "ask")) {
+    return (
+      decisions.find((decision) => decision.type === "ask") ?? {
+        type: "ask",
+        reason: "File write requires approval.",
+      }
+    );
+  }
+  return { type: "allow" };
+}
+
+function getWritePathPermission(
+  path: string,
+  mode: AgentMode,
+  input: PermissionRequest,
+): PermissionDecision {
+  if (input.planModeActive && input.planDraftRelativePath) {
+    return getPlanModeWriteDecision(path, input.planDraftRelativePath);
+  }
+  return getWritePathDecision(path, mode);
+}
+
 export class PermissionEngine {
   async check(input: PermissionRequest): Promise<PermissionDecision> {
     const { toolCall, mode } = input;
 
     switch (toolCall.name) {
       case "list_dir":
+      case "glob":
       case "grep":
       case "git_status":
       case "git_diff":
@@ -156,13 +228,7 @@ export class PermissionEngine {
         if (input.planModeActive && input.planDraftRelativePath) {
           try {
             const parsed = parsePatch(toolCall.arguments.patch);
-            if (matchesPlanDraftPath(input.planDraftRelativePath, parsed.filePath)) {
-              return { type: "allow" };
-            }
-            return {
-              type: "deny",
-              reason: `In plan mode, patches are only allowed for the plan draft at "${input.planDraftRelativePath}".`,
-            };
+            return getPlanModeWriteDecision(parsed.filePath, input.planDraftRelativePath);
           } catch (error) {
             return {
               type: "deny",
@@ -174,6 +240,62 @@ export class PermissionEngine {
           }
         }
         return getPatchDecision(toolCall.arguments.patch, mode);
+      case "write_file": {
+        const path = getStringArg(toolCall.arguments, "path");
+        if (path === null) {
+          return { type: "deny", reason: "write_file requires a string path argument." };
+        }
+        if (typeof toolCall.arguments.content !== "string") {
+          return { type: "deny", reason: "write_file requires a string content argument." };
+        }
+        if (input.planModeActive && input.planDraftRelativePath) {
+          return getPlanModeWriteDecision(path, input.planDraftRelativePath);
+        }
+        return getWritePathDecision(path, mode);
+      }
+      case "search_replace": {
+        const path = getStringArg(toolCall.arguments, "path");
+        if (path === null) {
+          return { type: "deny", reason: "search_replace requires a string path argument." };
+        }
+        if (typeof toolCall.arguments.old_string !== "string") {
+          return { type: "deny", reason: "search_replace requires a string old_string argument." };
+        }
+        if (typeof toolCall.arguments.new_string !== "string") {
+          return { type: "deny", reason: "search_replace requires a string new_string argument." };
+        }
+        if (input.planModeActive && input.planDraftRelativePath) {
+          return getPlanModeWriteDecision(path, input.planDraftRelativePath);
+        }
+        return getWritePathDecision(path, mode);
+      }
+      case "delete_file": {
+        const path = getStringArg(toolCall.arguments, "path");
+        if (path === null) {
+          return { type: "deny", reason: "delete_file requires a string path argument." };
+        }
+        if (input.planModeActive) {
+          return { type: "deny", reason: "delete_file is disabled in plan mode." };
+        }
+        return getWritePathPermission(path, mode, input);
+      }
+      case "move_file": {
+        const from = getStringArg(toolCall.arguments, "from");
+        const to = getStringArg(toolCall.arguments, "to");
+        if (from === null) {
+          return { type: "deny", reason: "move_file requires a string from argument." };
+        }
+        if (to === null) {
+          return { type: "deny", reason: "move_file requires a string to argument." };
+        }
+        if (input.planModeActive) {
+          return { type: "deny", reason: "move_file is disabled in plan mode." };
+        }
+        return mergeWritePathDecisions([
+          getWritePathPermission(from, mode, input),
+          getWritePathPermission(to, mode, input),
+        ]);
+      }
       case "run_shell": {
         const command = getStringArg(toolCall.arguments, "command");
         if (command === null) {

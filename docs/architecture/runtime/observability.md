@@ -3,7 +3,7 @@
 > scope: **observability**  
 > Observability 是全程子系统：记录发生了什么、为什么发生、如何复现、哪里失败、花了多少成本。
 
-**实现状态**：`@code-mind/observability` 已有 event-bus、run-store、redaction 等；kernel phase 通过 `kernel.transition` 事件与 `core.run-kernel` process log 可审计。WebSocket 流式 run 事件在 `packages/core/src/agent/runtime/runtime-event-hub.ts`。replay-engine、完整 cost trace 为 **planned**（P3 增强项，不阻塞 run 主链；见 [completion-audit-checklist.md](../completion-audit-checklist.md) 增强项）。
+**实现状态**：`@code-mind/observability` 已有 event-bus、run-store、redaction 等；kernel phase 通过 `kernel.transition` 事件与 `core.run-kernel` process log 可审计。WebSocket 流式 run 事件在 `packages/core/src/agent/runtime/runtime-event-hub.ts`。replay-engine、完整 cost trace 为 **planned**（P3 增强项，见 [backlog.md](../../backlog.md) 与 [completion-audit.md](../../archive/completion-audit.md) 增强项）。
 
 ---
 

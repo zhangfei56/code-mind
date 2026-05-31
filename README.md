@@ -13,7 +13,7 @@ corepack enable pnpm
 
 ## Quick start
 
-See **[docs/cli-guide.md](docs/cli-guide.md)** for build, model config, and full CLI usage.
+See **[docs/user-guide.md](docs/user-guide.md)** for build, model config, and full CLI usage.
 
 ```bash
 pnpm install
@@ -41,6 +41,6 @@ curl http://127.0.0.1:3847/api/sessions
 - `apps/cli` — `code-mind` CLI and REPL
 - `apps/api-server` — session HTTP API (`@code-mind/api-server`)
 - `packages/*` — core libraries
-- `docs/` — split docs: [README](docs/README.md) (router), [implementation](docs/implementation.md), [architecture](docs/architecture.md)
+- `docs/` — [README](docs/README.md) (agent entry), [architecture/](docs/architecture/), [user-guide](docs/user-guide.md), [backlog](docs/backlog.md)
 
 See [docs/README.md](docs/README.md) and root [AGENTS.md](AGENTS.md).

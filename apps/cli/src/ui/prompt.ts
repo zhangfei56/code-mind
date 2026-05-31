@@ -1,6 +1,8 @@
 import { createInterface } from "./readline-interface.js";
-import { stdin as input, stdout as output } from "node:process";
+import { stdin as input, stderr as defaultApprovalOutput, stdout as output } from "node:process";
 import type { AgentProfile } from "@code-mind/shared";
+import { theme } from "./theme.js";
+import type { TerminalComposer } from "./terminal-composer.js";
 
 interface DefaultProfileOptions {
   repoRootFocus?: boolean;
@@ -38,10 +40,10 @@ function createSystemPrompt(
     "不要生成、猜测或拼接 workspace 外的绝对路径。",
     "如果工具返回路径错误、文件不存在或权限错误，应修正路径后继续，而不是结束任务。",
     "工具结果是事实来源。读文件、搜索、shell 输出都要以最新工具结果为准，不要凭记忆续写。",
-    "可用工具至少包括：list_dir、read_file、grep、apply_patch、run_shell。需要跑测试、build、lint、typecheck 时优先使用 run_shell。",
+    "可用工具至少包括：list_dir、read_file、glob、grep、write_file、search_replace、delete_file、move_file、apply_patch、run_shell。需要跑测试、build、lint、typecheck 时优先使用 run_shell。",
     "敏感文件不能读取。",
     "修改代码后应运行相关测试。",
-    "如果需要修改文件，优先使用 apply_patch。",
+    "如果需要修改文件，小范围替换优先 search_replace，新建文件用 write_file，较大改动再用 apply_patch。",
     ...(options.repoRootFocus
       ? [
           "Repo-root 专项规则：你当前面对的是仓库根目录级任务。",
@@ -95,37 +97,79 @@ export function createDefaultProfile(
 
 export type ApprovalChoice = "once" | "always" | "deny";
 
-export async function promptApprovalDecision(): Promise<ApprovalChoice> {
-  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+export interface ApprovalPromptOptions {
+  /** Where the approval readline prompt is rendered (default stderr, separate from stdout). */
+  output?: NodeJS.WriteStream;
+  composer?: TerminalComposer;
+}
+
+function buildApprovalPromptLine(output: NodeJS.WriteStream): string {
+  return `${theme.yellow("approval", output)} ${theme.dim("›", output)} [y] once  [a] always  [n] no  [e] explain: `;
+}
+
+export async function promptApprovalDecision(
+  options: ApprovalPromptOptions = {},
+): Promise<ApprovalChoice> {
+  const output = options.output ?? defaultApprovalOutput;
+  const composer = options.composer;
+  const ttyOutput = composer?.output ?? output;
+  if (!process.stdin.isTTY || !ttyOutput.isTTY) {
     return "deny";
   }
 
-  process.stdout.write("\n");
+  const promptLine = buildApprovalPromptLine(ttyOutput);
+  if (composer) {
+    composer.setPrompt(promptLine);
+    composer.writeAbove("\n");
+    while (true) {
+      const answer = await composer.ask(promptLine);
+      const choice = parseApprovalChoice(answer, ttyOutput, composer);
+      if (choice !== "retry") {
+        return choice;
+      }
+    }
+  }
+
+  output.write("\n");
   const rl = createInterface({ input, output });
   try {
     while (true) {
-      const answer = await rl.question(
-        "Allow? [y] yes, once  [a] always allow  [n] no  [e] explain: ",
-      );
-      const trimmed = answer.trim().toLowerCase();
-      if (trimmed === "y" || trimmed === "yes") {
-        return "once";
-      }
-      if (trimmed === "a" || trimmed === "always") {
-        return "always";
-      }
-      if (trimmed === "n" || trimmed === "no" || trimmed === "") {
-        return "deny";
-      }
-      if (trimmed === "e" || trimmed === "explain") {
-        console.log(
-          "This action needs explicit approval before the agent can continue in your workspace.",
-        );
+      const answer = await rl.question(promptLine);
+      const choice = parseApprovalChoice(answer, output);
+      if (choice !== "retry") {
+        return choice;
       }
     }
   } finally {
     rl.close();
   }
+}
+
+function parseApprovalChoice(
+  answer: string,
+  output: NodeJS.WriteStream,
+  composer?: TerminalComposer,
+): ApprovalChoice | "retry" {
+  const trimmed = answer.trim().toLowerCase();
+  if (trimmed === "y" || trimmed === "yes") {
+    return "once";
+  }
+  if (trimmed === "a" || trimmed === "always") {
+    return "always";
+  }
+  if (trimmed === "n" || trimmed === "no" || trimmed === "") {
+    return "deny";
+  }
+  if (trimmed === "e" || trimmed === "explain") {
+    const message = `${theme.dim("  This action needs explicit approval before the agent can continue in your workspace.", output)}\n`;
+    if (composer?.isPinned()) {
+      composer.writeAbove(message);
+    } else {
+      output.write(message);
+    }
+    return "retry";
+  }
+  return "retry";
 }
 
 export async function confirmAction(

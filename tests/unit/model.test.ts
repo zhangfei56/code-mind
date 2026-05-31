@@ -106,6 +106,58 @@ export async function runModelTests(): Promise<void> {
     "before\nafter",
   );
 
+  const streamedDsml = [
+    "<",
+    "｜｜DSML｜｜",
+    "tool",
+    "_c",
+    "alls",
+    ">",
+    "<",
+    "｜｜DSML｜｜",
+    "inv",
+    "oke",
+    ' name="read_file">',
+    "<",
+    "｜｜DSML｜｜",
+    "parameter",
+    ' name="path"',
+    ' string="true">',
+    "packages/config/src/load-config.ts",
+    "</",
+    "｜｜DSML｜｜",
+    "parameter",
+    ">",
+    "</",
+    "｜｜DSML｜｜",
+    "inv",
+    "oke",
+    ">",
+    "</",
+    "｜｜DSML｜｜",
+    "tool",
+    "_c",
+    "alls",
+    ">",
+  ].join("\n");
+  assert.equal(stripDsmlToolCallMarkup(streamedDsml), "");
+  const streamedDsmlNormalized = normalizeOpenAIResponse({
+    choices: [
+      {
+        finish_reason: "stop",
+        message: {
+          content: streamedDsml,
+        },
+      },
+    ],
+  });
+  assert.equal(streamedDsmlNormalized.text, "");
+  assert.equal(streamedDsmlNormalized.toolCalls[0]?.name, "read_file");
+  assert.equal(
+    streamedDsmlNormalized.toolCalls[0]?.arguments.path,
+    "packages/config/src/load-config.ts",
+  );
+
   const reasoningNormalized = normalizeOpenAIResponse({
     choices: [
       {

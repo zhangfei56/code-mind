@@ -1,6 +1,6 @@
-# CLI 使用指南
+# code-mind 用户指南
 
-> scope: **cli-usage**  
+> scope: **user-guide** — 唯一用户操作文档  
 > audience: 开发者、日常使用 code-mind 的用户
 
 本文说明如何**编译**、**配置模型**、以及如何使用 **`code-mind` CLI** 完成代码任务。
@@ -299,7 +299,7 @@ code-mind agent list --cwd .
 
 **何时不会：** 模糊任务（「找 bug」）、1–3 文件小范围、或 ask 模式。
 
-完整策略与 Demo 见 **[subagent-policy.md](./subagent-policy.md)**。
+完整策略与 Demo 见 **[subagent.md](./architecture/domains/subagent.md)**。
 
 ---
 
@@ -307,7 +307,7 @@ code-mind agent list --cwd .
 
 ### 5.1 非交互（推荐 OpenCode 风格）
 
-> 输出格式完整规范见 **[cli-display-spec.md](./cli-display-spec.md)**（think / step / context / result、L0–L3 披露层级）。
+> 输出格式完整规范见 **[architecture/domains/cli-ui.md](./architecture/domains/cli-ui.md)**（think / step / context / result、L0–L3 披露层级）。
 
 **Mock UI 预览（无需 API key）：**
 
@@ -535,5 +535,6 @@ code-mind --mode edit --cwd .
 
 ## 11. 相关文档
 
-- [implementation.md](./implementation.md) — 实现状态与架构映射
+- [architecture/packages.md](./architecture/packages.md) — 包映射与实现状态
+- [backlog.md](./backlog.md) — 待完成任务
 - [AGENTS.md](../AGENTS.md) — 贡献者入口与源码路径

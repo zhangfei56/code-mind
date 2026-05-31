@@ -91,6 +91,23 @@ export function formatToolCallArgs(toolCall: ToolCall, meta: ToolCallLineMeta = 
         "unknown file";
       return `${name} ${shortPath(path)}`;
     }
+    case "write_file": {
+      const path = meta.filePath ?? (readStringArg(args, "path") || "unknown file");
+      return `${name} ${shortPath(path)}`;
+    }
+    case "search_replace": {
+      const path = meta.filePath ?? (readStringArg(args, "path") || "unknown file");
+      return `${name} ${shortPath(path)}`;
+    }
+    case "delete_file": {
+      const path = meta.filePath ?? (readStringArg(args, "path") || "unknown file");
+      return `${name} ${shortPath(path)}`;
+    }
+    case "move_file": {
+      const from = readStringArg(args, "from") || "unknown";
+      const to = meta.filePath ?? (readStringArg(args, "to") || "unknown");
+      return `${name} ${shortPath(from)} → ${shortPath(to)}`;
+    }
     case "run_subagent": {
       const agent = readStringArg(args, "agentName") || "subagent";
       const task = readStringArg(args, "task");

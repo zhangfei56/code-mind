@@ -156,8 +156,21 @@ export function applyInteractiveActivity(state: InteractiveState, event: AgentEv
           state.filesRead.push(args.path);
         }
       }
-      if (finished.toolCall.name === "apply_patch" && finished.success) {
-        const path = finished.filePath ?? "patched file";
+      if (
+        (finished.toolCall.name === "apply_patch" ||
+          finished.toolCall.name === "write_file" ||
+          finished.toolCall.name === "search_replace" ||
+          finished.toolCall.name === "delete_file" ||
+          finished.toolCall.name === "move_file") &&
+        finished.success
+      ) {
+        const path =
+          finished.filePath ??
+          (typeof args.path === "string"
+            ? args.path
+            : typeof args.to === "string"
+              ? args.to
+              : "patched file");
         if (!state.filesChanged.includes(path)) {
           state.filesChanged.push(path);
         }

@@ -1,8 +1,10 @@
 import type { AgentEvent, ToolCall } from "@code-mind/shared";
+import { containsDsmlMarkup, stripDsmlToolCallMarkup } from "@code-mind/models";
 import type { DisplayLevel } from "../display-level.js";
 import { showsTraceDetail } from "../display-level.js";
 import { resolveTerminalWidth, wrapText, truncateToWidth, displayWidth } from "../text-wrap.js";
 import {
+  colorActivityLine,
   colorFoldLine,
   colorNarrativeLine,
 } from "../journal-theme.js";
@@ -26,6 +28,8 @@ export interface StepJournalOptions {
   paneWidth?: number;
   /** When true, TTY viewport redraw is handled by the caller. */
   tty?: boolean;
+  /** Append flat tool lines instead of bordered activity panes (pinned-input TTY). */
+  flatActivityLog?: boolean;
 }
 
 export interface StepJournalOutput {
@@ -103,6 +107,33 @@ function formatNarrativeLines(text: string, stream?: NodeJS.WriteStream): string
   return wrapText(formatNarrative(text), width).map((line) => colorNarrativeLine(line, stream));
 }
 
+function sanitizeModelText(text: string): string {
+  return stripDsmlToolCallMarkup(text);
+}
+
+function looksLikeDsmlOnly(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) {
+    return true;
+  }
+  return containsDsmlMarkup(trimmed);
+}
+
+function resolveNarrativeSource(
+  textPreview: string,
+  contentPreview: string,
+  reasoningPreview: string,
+  planned: ToolCall[],
+): string {
+  for (const raw of [textPreview, contentPreview, reasoningPreview]) {
+    const cleaned = sanitizeModelText(raw).trim();
+    if (cleaned.length > 0 && !looksLikeDsmlOnly(cleaned)) {
+      return cleaned;
+    }
+  }
+  return synthesizeNarrative(planned);
+}
+
 function foldLine(step: number, toolCount: number): string {
   return `▸ Step ${step} · ${toolCount} tool${toolCount === 1 ? "" : "s"}`;
 }
@@ -111,6 +142,7 @@ export class StepJournalRenderer {
   private readonly level: DisplayLevel;
   private readonly stream: NodeJS.WriteStream | undefined;
   private readonly tty: boolean;
+  private readonly flatActivityLog: boolean;
   private pane: ActivityPane;
   private currentStep = 0;
   private currentNarrative: string | undefined;
@@ -123,11 +155,13 @@ export class StepJournalRenderer {
   private lastPreviewLine = "";
   private readonly foldedSteps: FoldedStep[] = [];
   private lastShellOutput: string | undefined;
+  private emittedEntryText = new Map<string, string>();
 
   constructor(options: StepJournalOptions) {
     this.level = options.level;
     this.stream = options.stream;
     this.tty = options.tty ?? false;
+    this.flatActivityLog = options.flatActivityLog ?? false;
     const width =
       options.paneWidth ??
       (typeof process.stderr.columns === "number" ? process.stderr.columns : 72);
@@ -180,14 +214,17 @@ export class StepJournalRenderer {
         this.streamContentActive = false;
         this.previewActive = false;
         this.lastPreviewLine = "";
+        this.emittedEntryText.clear();
         this.pane = this.pane.cloneEmpty();
         break;
       }
       case "model.request":
         this.streamContentActive = p.streamContent === true;
         this.pane.setThinking(true);
-        out.redrawPane = this.tty && this.paneCommitted;
-        out.paneLines = this.renderPaneLines();
+        if (!this.flatActivityLog) {
+          out.redrawPane = this.tty && this.paneCommitted;
+          out.paneLines = this.renderPaneLines();
+        }
         break;
       case "model.content.delta": {
         if (this.streamContentActive) {
@@ -198,8 +235,12 @@ export class StepJournalRenderer {
           break;
         }
         this.contentPreview = (this.contentPreview + delta).trimStart();
-        this.pane.setThinkingPreview(this.contentPreview);
-        this.emitThinkingPreview(out, this.contentPreview);
+        if (containsDsmlMarkup(this.contentPreview)) {
+          break;
+        }
+        const contentPreview = sanitizeModelText(this.contentPreview);
+        this.pane.setThinkingPreview(contentPreview);
+        this.emitThinkingPreview(out, contentPreview);
         break;
       }
       case "model.reasoning.delta": {
@@ -208,12 +249,15 @@ export class StepJournalRenderer {
           this.reasoningLength =
             typeof p.totalLength === "number" ? p.totalLength : this.reasoningLength;
           this.pane.setReasoning(this.reasoningLength);
-          out.redrawPane = this.tty && this.paneCommitted;
-          out.paneLines = this.renderPaneLines();
+          if (!this.flatActivityLog) {
+            out.redrawPane = this.tty && this.paneCommitted;
+            out.paneLines = this.renderPaneLines();
+          }
         } else if (delta.length > 0 && this.contentPreview.length === 0) {
           this.reasoningPreview = (this.reasoningPreview + delta).trim();
-          this.pane.setThinkingPreview(this.reasoningPreview);
-          this.emitThinkingPreview(out, this.reasoningPreview);
+          const reasoningPreview = sanitizeModelText(this.reasoningPreview);
+          this.pane.setThinkingPreview(reasoningPreview);
+          this.emitThinkingPreview(out, reasoningPreview);
         }
         break;
       }
@@ -225,14 +269,12 @@ export class StepJournalRenderer {
 
         if (toolCallCount > 0) {
           const planned = payloadToolCalls(p, "plannedToolCalls");
-          const narrativeSource =
-            textPreview.length > 0
-              ? textPreview
-              : this.contentPreview.length > 0
-                ? this.contentPreview
-                : this.reasoningPreview.length > 0
-                  ? this.reasoningPreview
-                  : synthesizeNarrative(planned);
+          const narrativeSource = resolveNarrativeSource(
+            textPreview,
+            this.contentPreview,
+            this.reasoningPreview,
+            planned,
+          );
           this.currentNarrative = formatNarrative(narrativeSource);
           const narrativeLines = formatNarrativeLines(narrativeSource, this.stream);
           if (this.previewActive && this.tty) {
@@ -267,8 +309,12 @@ export class StepJournalRenderer {
             this.currentNarrative = undefined;
           }
           this.commitPane(out);
-          out.redrawPane = this.tty;
-          out.paneLines = this.renderPaneLines();
+          if (this.flatActivityLog) {
+            this.emitFlatToolUpdate(out, call);
+          } else {
+            out.redrawPane = this.tty;
+            out.paneLines = this.renderPaneLines();
+          }
         }
         break;
       }
@@ -284,12 +330,14 @@ export class StepJournalRenderer {
         if (call?.name === "run_shell" && output) {
           this.lastShellOutput = output;
         }
-        if (!this.tty && this.paneCommitted) {
+        if (this.flatActivityLog && this.paneCommitted) {
+          this.emitFlatToolUpdate(out, call);
+        } else if (!this.tty && this.paneCommitted) {
           const line = formatToolCallLineFromResult(p);
           if (line) {
             out.lines.push(`  ${line}`);
           }
-        } else {
+        } else if (!this.flatActivityLog) {
           out.redrawPane = this.tty && this.paneCommitted;
           out.paneLines = this.renderPaneLines();
         }
@@ -299,7 +347,9 @@ export class StepJournalRenderer {
         const passed = p.passed === true;
         const summary = typeof p.summary === "string" ? p.summary : "";
         this.pane.appendVerifyLine(passed, summary);
-        if (this.paneCommitted) {
+        if (this.flatActivityLog && this.paneCommitted) {
+          this.emitFlatSystemUpdate(out);
+        } else if (this.paneCommitted) {
           out.redrawPane = this.tty;
           out.paneLines = this.renderPaneLines();
         } else {
@@ -311,7 +361,9 @@ export class StepJournalRenderer {
         const compactionCount = typeof p.compactionCount === "number" ? p.compactionCount : 0;
         const messageCount = typeof p.messageCount === "number" ? p.messageCount : 0;
         this.pane.appendCompactLine(compactionCount, messageCount);
-        if (this.paneCommitted) {
+        if (this.flatActivityLog && this.paneCommitted) {
+          this.emitFlatSystemUpdate(out);
+        } else if (this.paneCommitted) {
           out.redrawPane = this.tty;
           out.paneLines = this.renderPaneLines();
         } else {
@@ -376,11 +428,58 @@ export class StepJournalRenderer {
       return;
     }
     if (!this.paneCommitted) {
-      out.lines.push(...this.renderPaneLines(!this.tty));
-      out.lines.push("");
-      out.paneLines = this.renderPaneLines();
+      if (this.flatActivityLog) {
+        this.emitAllFlatEntries(out);
+      } else {
+        out.lines.push(...this.renderPaneLines(!this.tty));
+        out.lines.push("");
+        out.paneLines = this.renderPaneLines();
+      }
       out.redrawPane = false;
       this.paneCommitted = true;
+    }
+  }
+
+  private flatEntryKey(entry: ActivityEntry): string {
+    return entry.toolCallId ?? entry.id;
+  }
+
+  private formatFlatActivityLine(entry: ActivityEntry): string {
+    const maxWidth = Math.max(1, resolveTerminalWidth(this.stream) - 2);
+    const plain = truncateToWidth(entry.text, maxWidth);
+    return `  ${colorActivityLine(plain, entry.status, this.stream)}`;
+  }
+
+  private emitFlatEntryIfNeeded(out: StepJournalOutput, entry: ActivityEntry): void {
+    const key = this.flatEntryKey(entry);
+    const last = this.emittedEntryText.get(key);
+    if (last === entry.text) {
+      return;
+    }
+    this.emittedEntryText.set(key, entry.text);
+    out.lines.push(this.formatFlatActivityLine(entry));
+  }
+
+  private emitAllFlatEntries(out: StepJournalOutput): void {
+    for (const entry of this.pane.getEntries()) {
+      this.emitFlatEntryIfNeeded(out, entry);
+    }
+  }
+
+  private emitFlatToolUpdate(out: StepJournalOutput, call: ToolCall | undefined): void {
+    if (!call) {
+      return;
+    }
+    const entry = this.pane.getEntries().find((item) => item.toolCallId === call.id);
+    if (entry) {
+      this.emitFlatEntryIfNeeded(out, entry);
+    }
+  }
+
+  private emitFlatSystemUpdate(out: StepJournalOutput): void {
+    const entry = this.pane.getEntries().at(-1);
+    if (entry?.kind === "system") {
+      this.emitFlatEntryIfNeeded(out, entry);
     }
   }
 
@@ -416,7 +515,11 @@ export class StepJournalRenderer {
     if (!this.tty) {
       return;
     }
-    const line = this.formatPreviewLine(text);
+    const cleaned = sanitizeModelText(text).trim();
+    if (!cleaned || looksLikeDsmlOnly(cleaned)) {
+      return;
+    }
+    const line = this.formatPreviewLine(cleaned);
     if (line === this.lastPreviewLine) {
       return;
     }

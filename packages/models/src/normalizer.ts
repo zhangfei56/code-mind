@@ -165,11 +165,15 @@ function parseDsmlToolCalls(text: string): DsmlToolCall[] {
 }
 
 function normalizeDsmlText(text: string): ToolCall[] {
-  if (!text.includes("<｜｜DSML｜｜tool_calls>")) {
+  const normalized = normalizeDsmlFormatting(text);
+  if (
+    !normalized.includes("<｜｜DSML｜｜tool_calls>") &&
+    !containsDsmlMarkup(normalized)
+  ) {
     return [];
   }
 
-  return parseDsmlToolCalls(text).map((toolCall, index) => ({
+  return parseDsmlToolCalls(normalized).map((toolCall, index) => ({
     id: `dsml_tool_call_${index + 1}`,
     name: toolCall.name,
     arguments: toolCall.arguments,
@@ -177,11 +181,53 @@ function normalizeDsmlText(text: string): ToolCall[] {
   }));
 }
 
+/** Whether text contains DeepSeek DSML markup (including streamed line breaks). */
+export function containsDsmlMarkup(text: string): boolean {
+  return /<\s*(?:｜\s*){2}\s*DSML\b/i.test(text) || /<｜｜DSML/i.test(text);
+}
+
+/** Collapse whitespace/newlines inside streamed DSML markup tokens. */
+export function normalizeDsmlFormatting(text: string): string {
+  let out = text;
+  out = out.replace(/<\s*(?=(?:｜\s*){2}\s*DSML\b)/gi, "<");
+  out = out.replace(/<\/\s*(?=(?:｜\s*){2}\s*DSML\b)/gi, "</");
+  out = out.replace(/(?:｜\s*){2}\s*DSML\s*(?:｜\s*){2}/gi, "｜｜DSML｜｜");
+  out = out.replace(/\btool\s+_?\s*calls\b/gi, "tool_calls");
+  out = out.replace(/\binv\s*oke\b/gi, "invoke");
+  out = out.replace(/\bpar\s*ameter\b/gi, "parameter");
+  out = out.replace(/<\s*([^>\n]+?)\s*>/g, (_match, inner: string) => {
+    if (!/DSML|｜｜|tool_calls|invoke|parameter/i.test(inner)) {
+      return `<${inner}>`;
+    }
+    return `<${inner.replace(/\s+/g, "")}>`;
+  });
+  out = out.replace(/<\s*\/\s*([^>\n]+?)\s*>/g, (_match, inner: string) => {
+    if (!/DSML|｜｜|tool_calls|invoke|parameter/i.test(inner)) {
+      return `</${inner}>`;
+    }
+    return `</${inner.replace(/\s+/g, "")}>`;
+  });
+  return out;
+}
+
+function stripTrailingDsmlBlock(text: string): string {
+  const openMatch = text.match(/<\s*(?:｜\s*){2}\s*DSML/i);
+  if (openMatch?.index === undefined) {
+    return text;
+  }
+  return text.slice(0, openMatch.index).trimEnd();
+}
+
 export function stripDsmlToolCallMarkup(text: string): string {
-  return text
-    .replace(/<｜｜DSML｜｜tool_calls>[\s\S]*?<\/｜｜DSML｜｜tool_calls>/g, "")
+  const normalized = normalizeDsmlFormatting(text);
+  let result = normalized
+    .replace(/<｜｜DSML｜｜tool_calls>[\s\S]*?<\/｜｜DSML｜｜tool_calls>/gi, "")
     .replace(/\n\s*\n+/g, "\n")
     .trim();
+  if (containsDsmlMarkup(result)) {
+    result = stripTrailingDsmlBlock(result);
+  }
+  return result;
 }
 
 export function normalizeOpenAIResponse(raw: unknown): ModelResponse {
