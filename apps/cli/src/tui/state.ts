@@ -92,11 +92,13 @@ export interface TuiState {
   filesChanged: string[];
   commandsRun: number;
   compactionCount: number;
+  promptMessageCount: number;
+  lastContextTokens?: number;
+  maxContextTokens?: number;
   tokenUsage?: TokenUsage;
   activityDetail: string;
   lastError?: TuiErrorCard;
   lastModelDurationMs?: number;
-  lastContextTokens?: number;
   turnStartedAtMs?: number;
   phaseStartedAtMs?: number;
 }
@@ -141,6 +143,7 @@ export function createTuiState(input: {
     filesChanged: [],
     commandsRun: 0,
     compactionCount: 0,
+    promptMessageCount: 0,
     activityDetail: "",
   };
 }
@@ -283,6 +286,9 @@ export function applyTuiEvent(state: TuiState, event: AgentEvent): void {
       state.thinkingPhase = "thinking";
       state.thinkingFocus = `Thinking at step ${state.step || numberValue(p.step, 0)}/${state.maxSteps || numberValue(p.maxSteps, 0) || "?"}.`;
       state.nextAction = "Compare available evidence and choose the next action.";
+      if (typeof p.messageCount === "number") {
+        state.promptMessageCount = p.messageCount;
+      }
       break;
     case "model.content.delta": {
       const delta = typeof p.delta === "string" ? p.delta : "";
@@ -314,6 +320,9 @@ export function applyTuiEvent(state: TuiState, event: AgentEvent): void {
       }
       if (typeof p.contextTokens === "number") {
         state.lastContextTokens = p.contextTokens;
+      }
+      if (typeof p.maxContextTokens === "number") {
+        state.maxContextTokens = p.maxContextTokens;
       }
       if (textPreview.length > 0) {
         state.reasoningPreview = textPreview;

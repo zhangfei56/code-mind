@@ -198,6 +198,13 @@ models:
     base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
     api_key: sk-your-dashscope-key
     model: qwen3-coder-plus
+
+# Optional: context compaction (env CODE_MIND_COMPACTION_* overrides)
+compaction:
+  char_threshold: 18000
+  retained_messages: 8
+  retained_observations: 8
+  model: deepseek   # config models key for dedicated compact model
 ```
 
 | YAML 字段 | 含义 |
@@ -207,6 +214,10 @@ models:
 | `models.<name>.base_url` | API 地址 |
 | `models.<name>.api_key` | API Key |
 | `models.<name>.model` | 上游模型 ID |
+| `compaction.char_threshold` | 上下文压缩触发阈值（字符；env 可覆盖） |
+| `compaction.retained_messages` | compact 后保留最近消息数 |
+| `compaction.retained_observations` | compact 后保留最近 observation 数 |
+| `compaction.model` | 独立 compact 模型（config models 键名） |
 
 ```bash
 code-mind config show

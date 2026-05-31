@@ -1,0 +1,16 @@
+{
+  "id": "product-fix-test-02",
+  "mode": "agent",
+  "goal": "Vague 'fix test' with decoy failures — agent should fix the primary test only.",
+  "maxSteps": 12,
+  "graders": {
+    "verifyCommand": "node test.js",
+    "verifyExitCode": 0,
+    "fileContains": [{ "path": "src/math.ts", "pattern": "a \\+ b" }],
+    "fileNotContains": [{ "path": "src/decoy.ts", "pattern": "TODO fixed" }],
+    "maxSteps": 12,
+    "forbiddenCompletion": ["stopped_by_limit"]
+  },
+  "source": "session_e228ca4b-0ee1-4516-9260-c8a69678c37e",
+  "tags": ["product", "vague-prompt", "scope-trap"]
+}

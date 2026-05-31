@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import {
   applyRunKernelEventAndCheckpoint,
   assertRunKernelInvariants,
+  canAcceptToolCallsHandled,
   createRunKernelState,
   createRunScopedKernelPorts,
   createRunState,
@@ -152,6 +153,12 @@ export async function runRunKernelTests(): Promise<void> {
   );
   assert.equal(recoveryFromTools.state.phase, "recovering");
   assert.equal(expectRunKernelCommand(recoveryFromTools, "assemble_prompt").type, "assemble_prompt");
+  assert.equal(canAcceptToolCallsHandled("executing_tool"), true);
+  assert.equal(canAcceptToolCallsHandled("recovering"), false);
+  assert.throws(
+    () => transitionRunKernelState(recoveryFromTools.state, { type: "tool_calls_handled" }),
+    /phase recovering cannot receive tool_calls_handled/,
+  );
 
   const verifying = transitionRunKernelState(
     {

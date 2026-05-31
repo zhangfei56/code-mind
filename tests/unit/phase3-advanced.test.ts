@@ -17,7 +17,26 @@ class CompactionProvider implements ModelProvider {
   name = "fake";
   private step = 0;
 
-  async chat(_request: ModelRequest): Promise<ModelResponse> {
+  async chat(request: ModelRequest): Promise<ModelResponse> {
+    if (!request.tools || request.tools.length === 0) {
+      return {
+        text: [
+          "# Session compaction (rolling)",
+          "",
+          "## Task",
+          "",
+          "- 分析大文件",
+          "",
+          "## Evidence",
+          "",
+          "- read_file: src/large.ts — inspected large file",
+        ].join("\n"),
+        finishReason: "stop",
+        raw: {},
+        toolCalls: [],
+      };
+    }
+
     this.step += 1;
     if (this.step <= 3) {
       return {

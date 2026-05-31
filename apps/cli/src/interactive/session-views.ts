@@ -2,7 +2,7 @@ import { GitManager, ToolRegistry, registerDefaultTools } from "@code-mind/execu
 import type { AgentMode, AgentEvent, TokenUsage } from "@code-mind/shared";
 import { toolPayloadToFinishedLike } from "../ui/agent-output/tool-blocks.js";
 import { securityInfoForMode } from "../ui/header-details.js";
-import { formatTokenUsageSummary } from "../ui/format.js";
+import { formatContextUsage, formatTokenUsageSummary } from "../ui/format.js";
 import { shortPath } from "../ui/theme.js";
 import type { InteractiveState } from "./commands.js";
 
@@ -63,6 +63,12 @@ export function renderInteractiveContext(state: InteractiveState): string {
     `  Files read: ${state.filesRead.length}`,
     `  Files changed: ${state.filesChanged.length}`,
     `  Commands run: ${state.commandsRun}`,
+    `  Messages: ${state.promptMessageCount || "n/a"}`,
+    `  Context: ${
+      state.contextTokens === undefined
+        ? "n/a"
+        : formatContextUsage(state.contextTokens, state.maxContextTokens)
+    }`,
     `  Compactions: ${state.compactionCount}`,
   ];
 
@@ -189,6 +195,32 @@ export function applyInteractiveActivity(state: InteractiveState, event: AgentEv
     case "context.compacted":
       state.compactionCount += 1;
       break;
+    case "context.compaction_failed":
+      break;
+    case "model.request": {
+      const messageCount = (event.payload as { messageCount?: number }).messageCount;
+      if (typeof messageCount === "number") {
+        state.promptMessageCount = messageCount;
+      }
+      break;
+    }
+    case "model.response": {
+      const payload = event.payload as {
+        contextTokens?: number;
+        maxContextTokens?: number;
+        messageCount?: number;
+      };
+      if (typeof payload.contextTokens === "number") {
+        state.contextTokens = payload.contextTokens;
+      }
+      if (typeof payload.maxContextTokens === "number") {
+        state.maxContextTokens = payload.maxContextTokens;
+      }
+      if (typeof payload.messageCount === "number") {
+        state.promptMessageCount = payload.messageCount;
+      }
+      break;
+    }
     case "turn.finished":
       if (event.payload.tokenUsage) {
         state.tokenUsage = event.payload.tokenUsage as TokenUsage;
@@ -204,6 +236,9 @@ export function createEmptyActivityState(): {
   filesChanged: string[];
   commandsRun: number;
   compactionCount: number;
+  promptMessageCount: number;
+  contextTokens: number | undefined;
+  maxContextTokens: number | undefined;
   tokenUsage: TokenUsage | undefined;
   lastShellOutput: string | undefined;
 } {
@@ -212,6 +247,9 @@ export function createEmptyActivityState(): {
     filesChanged: [],
     commandsRun: 0,
     compactionCount: 0,
+    promptMessageCount: 0,
+    contextTokens: undefined,
+    maxContextTokens: undefined,
     tokenUsage: undefined,
     lastShellOutput: undefined,
   };

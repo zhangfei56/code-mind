@@ -16,7 +16,7 @@
 | Session | `@code-mind/session` | session-store, restore, revert | apps 经 `SessionStorePort` |
 | Verification | `@code-mind/verify` | verification, review-engine | loop 内 adapter 在 core |
 | Server runtime | `@code-mind/server-runtime` | async run, HTTP 审批队列 | |
-| Context | `@code-mind/context` | context-manager, compaction | |
+| Context | `@code-mind/context` | context-manager, compaction 纯函数与模板 | 不调模型；LLM 摘要经 core `CompactionPort` |
 | Models | `@code-mind/models` | model-router, adapters | |
 | Execution | `@code-mind/execution` | tools/*, mcp-adapter | 无 sandbox 内嵌 |
 | Workspace | `@code-mind/workspace` | snapshot, diff, rollback, rules | |
@@ -63,6 +63,8 @@
 | Session 入口 | `packages/core/src/agent/run-session.ts` |
 | Kernel | `packages/core/src/agent/kernel/` |
 | Loop | `packages/core/src/agent/runtime/agent-loop-controller.ts` |
+| Context compaction 编排 | `packages/core/src/agent/runtime/session-lifecycle.ts` + `ports/compaction-port.ts` [Phase 1+] |
+| Compaction 纯函数 | `packages/context/src/compaction.ts` + `compaction-prompt.ts` + `compaction-locale.ts` — window retain、阈值、LLM merge 输入 |
 | Composition | `packages/agent-composition/src/compose-agent-loop.ts` |
 | 默认工具 | `packages/execution/src/tools/default-tools.ts` |
 | 权限 | `packages/security/src/permissions/permission-engine.ts` |

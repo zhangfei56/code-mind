@@ -48,6 +48,7 @@ permission.decision
 approval.requested / approval.resolved
 guardrail.tripwire
 context.compacted
+context.compaction_failed
 checkpoint.saved
 verification.started / verification.finished
 recovery.triggered

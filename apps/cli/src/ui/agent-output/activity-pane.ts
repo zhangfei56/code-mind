@@ -156,12 +156,17 @@ export class ActivityPane {
     );
   }
 
-  appendCompactLine(compactionCount: number, messageCount: number): void {
-    this.appendSystem(
-      "compact",
-      `×${compactionCount} · ${messageCount} msgs`,
-      "done",
-    );
+  appendCompactLine(
+    compactionCount: number,
+    messageCount: number,
+    strategy = "llm",
+    evictedBlocks?: number,
+  ): void {
+    const detail =
+      evictedBlocks !== undefined && evictedBlocks > 0
+        ? `${strategy} · ×${compactionCount} · ${evictedBlocks} blocks → summary`
+        : `${strategy} · ×${compactionCount} · ${messageCount} msgs`;
+    this.appendSystem("compact", detail, "done");
   }
 
   appendRawLine(text: string, status: ToolCallLineStatus = "done"): void {

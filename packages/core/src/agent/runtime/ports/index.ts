@@ -38,6 +38,10 @@ export {
   createSessionStorePort,
   type SessionStorePort,
 } from "./session-store-port.js";
+export {
+  createCompactionPort,
+  type CompactionPort,
+} from "./compaction-port.js";
 
 /** Ports constructed once per AgentLoopController (no session/run scope). */
 export interface StaticRuntimePorts {

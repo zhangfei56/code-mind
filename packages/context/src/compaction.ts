@@ -1,80 +1,106 @@
-import type { AgentSession, InternalMessage, Observation } from "@code-mind/shared";
-
-const DEFAULT_COMPACTION_CHAR_THRESHOLD = 18_000;
-const DEFAULT_RETAINED_MESSAGES = 8;
-const DEFAULT_RETAINED_OBSERVATIONS = 8;
+import type {
+  AgentSession,
+  CompactionPolicy,
+  CompactionSummarizeInput,
+  InternalMessage,
+  Observation,
+} from "@code-mind/shared";
+import { DEFAULT_COMPACTION_POLICY } from "@code-mind/shared";
+import { resolveCompactionLocale } from "./compaction-locale.js";
 
 function estimateMessageSize(messages: InternalMessage[]): number {
   return messages.reduce((total, message) => total + message.content.length, 0);
 }
 
-function summarizeMessages(messages: InternalMessage[]): string[] {
-  return messages
-    .filter((message) => message.content.trim().length > 0)
-    .slice(-12)
-    .map((message) => `- ${message.role}: ${message.content.trim().replace(/\s+/g, " ").slice(0, 240)}`);
+function estimateObservationSize(observations: Observation[]): number {
+  return observations.reduce((total, observation) => {
+    const detail = observation.toolResult.success
+      ? observation.toolResult.output
+      : (observation.toolResult.error ?? observation.toolResult.output);
+    return total + detail.length;
+  }, 0);
 }
 
-function summarizeObservations(observations: Observation[]): string[] {
-  return observations
-    .slice(-10)
-    .map((observation) => {
-      const detail = observation.toolResult.success
-        ? observation.toolResult.output
-        : observation.toolResult.error ?? observation.toolResult.output;
-      return `- ${observation.toolCall.name}: ${detail.replace(/\s+/g, " ").slice(0, 240)}`;
-    });
+function resolveCompactionIndex(session: AgentSession): number {
+  return typeof session.metadata?.compactionCount === "number"
+    ? session.metadata.compactionCount + 1
+    : 1;
 }
 
-export function shouldCompact(session: AgentSession): boolean {
-  return estimateMessageSize(session.messages) >= DEFAULT_COMPACTION_CHAR_THRESHOLD;
+export function estimateSessionContextChars(session: AgentSession): number {
+  return estimateMessageSize(session.messages) + estimateObservationSize(session.observations);
 }
 
-export function buildCompactionSummary(session: AgentSession): string {
-  const compactionIndex =
-    typeof session.metadata?.compactionCount === "number"
-      ? session.metadata.compactionCount + 1
-      : 1;
+export function shouldCompact(
+  session: AgentSession,
+  policy: CompactionPolicy = DEFAULT_COMPACTION_POLICY,
+): boolean {
+  return estimateSessionContextChars(session) >= policy.charThreshold;
+}
 
-  return [
-    `# Compaction ${compactionIndex}`,
-    "",
-    "## Task",
-    "",
-    `- ${session.task.text}`,
-    "",
-    "## Recent Conversation",
-    "",
-    ...summarizeMessages(session.messages.slice(0, -DEFAULT_RETAINED_MESSAGES)),
-    "",
-    "## Recent Tool Results",
-    "",
-    ...summarizeObservations(
-      session.observations.slice(0, -DEFAULT_RETAINED_OBSERVATIONS),
-    ),
-  ].join("\n");
+export function hasCompactionEviction(
+  input: CompactionSummarizeInput,
+): boolean {
+  return input.evictedMessages.length > 0 || input.evictedObservations.length > 0;
+}
+
+export function buildCompactionSummarizeInput(
+  session: AgentSession,
+  policy: CompactionPolicy = DEFAULT_COMPACTION_POLICY,
+): CompactionSummarizeInput {
+  const base: CompactionSummarizeInput = {
+    taskText: session.task.text,
+    previousSummary:
+      typeof session.metadata?.compactionSummary === "string" &&
+      session.metadata.compactionSummary.length > 0
+        ? session.metadata.compactionSummary
+        : undefined,
+    evictedMessages: session.messages.slice(0, -policy.retainedMessages),
+    evictedObservations: session.observations.slice(0, -policy.retainedObservations),
+    compactionIndex: resolveCompactionIndex(session),
+    locale: resolveCompactionLocale(session),
+  };
+
+  if (hasCompactionEviction(base) || !shouldCompact(session, policy)) {
+    return base;
+  }
+
+  return {
+    ...base,
+    evictedMessages:
+      session.messages.length > 1
+        ? session.messages.slice(0, -1)
+        : session.messages,
+    evictedObservations: session.observations,
+  };
+}
+
+/** Re-apply window retain after resume (events rebuild full history). */
+export function applyCompactionWindowRetain(
+  session: AgentSession,
+  policy: CompactionPolicy = DEFAULT_COMPACTION_POLICY,
+): void {
+  if (typeof session.metadata?.compactionCount !== "number" || session.metadata.compactionCount < 1) {
+    return;
+  }
+  session.messages = session.messages.slice(-policy.retainedMessages);
+  session.observations = session.observations.slice(-policy.retainedObservations);
 }
 
 export function applyCompaction(
   session: AgentSession,
   summary: string,
+  policy: CompactionPolicy = DEFAULT_COMPACTION_POLICY,
 ): void {
-  const previousSummary =
-    typeof session.metadata?.compactionSummary === "string"
-      ? session.metadata.compactionSummary
-      : "";
-  const nextSummary = previousSummary
-    ? `${previousSummary}\n\n${summary}`
-    : summary;
-
   session.metadata = {
     ...session.metadata,
-    compactionSummary: nextSummary,
+    compactionSummary: summary,
     compactionCount:
       typeof session.metadata?.compactionCount === "number"
         ? session.metadata.compactionCount + 1
         : 1,
+    compactionBlockedContextChars: undefined,
   };
-  session.messages = session.messages.slice(-DEFAULT_RETAINED_MESSAGES);
-  session.observations = session.observations.slice(-DEFAULT_RETAINED_OBSERVATIONS);
+  session.messages = session.messages.slice(-policy.retainedMessages);
+  session.observations = session.observations.slice(-policy.retainedObservations);
 }

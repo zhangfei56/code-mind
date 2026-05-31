@@ -51,7 +51,8 @@ RunState
     closingTurn
     pendingToolCalls
     checkpointRequired
-current summary / compacted summary
+current summary / compacted summary（metadata.compactionSummary + compact/compact-NNN.md）
+compaction-ledger.jsonl（可选，Phase 3：strategy + usage 审计）
 approval records
 verification / review result
 patch / diff / snapshot artifacts
@@ -121,6 +122,22 @@ run_failed                -> failed
 - 如果 manifest 记录了更大的 `effectiveMaxSteps`，恢复时同步到 `budget.extraStepBudget` 和 `kernel.maxSteps`。
 - runtime 消费 kernel command 时使用 `expectRunKernelCommand()` / `isRunKernelCommand()`，避免多个调用点手写不一致的 command 判断。
 
+## Context compaction 持久化
+
+触发时机：每个 tool 执行完成后（非每个 model step），见 [context-compaction.md](./context-compaction.md)。
+
+```text
+compactSessionIfNeeded()
+  → shouldCompact?（messages + observations 字符 ≥ 阈值）
+  → compactionBlockedContextChars 相同则跳过（LLM 失败后防重试）
+  → CompactionPort.summarize（LLM only）
+  → 成功：replace metadata.compactionSummary + window retain + compact-NNN.md + context.compacted
+  → 失败：context.compaction_failed + block；不裁 messages
+  → SessionRuntimeStatus: compacting → running
+```
+
+Resume：`session-restore.ts` 读取 **最新** `compact-NNN.md`；若曾 compact 则对 messages/observations 做 window retain slice。
+
 ## 实现归属建议
 
 ```text
@@ -129,11 +146,19 @@ packages/core/src/agent/runtime/
   kernel-runtime.ts                      # event / checkpoint / command adapter
   run-state.ts
   run-state-persistence.ts               # v4 kernel 持久化 + normalize
+  session-lifecycle.ts                   # compactSessionIfNeeded 编排
+  ports/compaction-port.ts               # LLM 摘要 adapter [Phase 1–2]
+
+packages/context/src/
+  compaction.ts                          # shouldCompact / buildInput / applyCompaction
+  compaction-prompt.ts                   # LLM merge 模板
+  compaction-locale.ts                   # zh/en locale
 
 packages/session/src/                    # public owner: @code-mind/session
   session-store.ts
   session-manifest.ts
   session-restore.ts
+  saveCompactSummary → compact-NNN.md
 
 packages/workspace/src/
   file-snapshot.ts

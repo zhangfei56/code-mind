@@ -812,6 +812,8 @@ class CodeMindTuiApp {
       repoRootFocus: isBroadRepoRootTask(task, this.state.cwd),
     });
     const { loop } = await createCliAgentLoop(this.state.cwd, provider, profile, {
+      config,
+      modelKey: this.state.model,
       permissionPrompter: {
         approve: (sessionId, toolCall, decision, approvalOptions) =>
           this.approvalManager.request(sessionId, toolCall, decision.reason, {

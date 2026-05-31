@@ -10,7 +10,7 @@ import {
   recordToolModifiedFile,
   syncModifiedFilesFromWorkspace,
 } from "../change-tracking.js";
-import { runAutomaticVerification } from "../verification.js";
+import { runAutomaticVerification, runVerifyOnlyAutomaticVerificationIfNeeded, shellLooksLikeVerification } from "../verification.js";
 import type { ToolCallHandlerSlice, ToolCallContext, ToolCallOutcome } from "./types.js";
 import { buildToolDisplayExtras } from "./types.js";
 import {
@@ -346,4 +346,33 @@ export async function handlePostShellReverification(
   } else {
     setActivity(runState.progress, "editing");
   }
+}
+
+export async function handleVerifyOnlyAutomaticVerification(
+  deps: ToolCallHandlerSlice,
+  ctx: ToolCallContext,
+  result: ToolResult,
+): Promise<void> {
+  const { session, input, runState, strategy, toolCall, stepNumber, sessionStore } = ctx;
+  if (
+    toolCall.name !== "run_shell" ||
+    !result.success ||
+    !shellLooksLikeVerification(toolCall)
+  ) {
+    return;
+  }
+
+  await runVerifyOnlyAutomaticVerificationIfNeeded(
+    {
+      verification: deps.verification,
+      publish: (input, event) => deps.lifecycle.publish(input, event),
+      checkpointPort: deps.checkpointPort,
+    },
+    sessionStore,
+    session,
+    input,
+    runState,
+    stepNumber,
+    strategy,
+  );
 }

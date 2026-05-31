@@ -17,6 +17,7 @@ import {
   dispatchKernelTransitionCommands,
   runKernelCheckpointOptions,
 } from "./kernel-runtime.js";
+import { canAcceptToolCallsHandled } from "../kernel/index.js";
 import { setSessionStatus } from "./session-status.js";
 
 export interface StepRunnerDeps {
@@ -169,13 +170,13 @@ export async function runAgentStep(
       deps.lifecycle,
       sessionStore,
       session,
-      input.model.name,
+      input.model,
       input,
       runState,
     );
   }
 
-  if (modelOutcome.toolCalls.length > 0) {
+  if (modelOutcome.toolCalls.length > 0 && canAcceptToolCallsHandled(runState.kernel.phase)) {
     const transition = await applyRunKernelEventAndCheckpoint(
       session,
       runState,

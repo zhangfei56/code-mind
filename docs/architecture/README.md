@@ -23,6 +23,7 @@
 | 文档 | 何时读 |
 |------|--------|
 | [runtime/prompt-assembly.md](./runtime/prompt-assembly.md) | context / system prompt / tool schema 选择 |
+| [runtime/context-compaction.md](./runtime/context-compaction.md) | **上下文压缩（LLM 增量摘要 + cache 顺序）** |
 | [runtime/tool-loop.md](./runtime/tool-loop.md) | 工具授权、执行、observation |
 | [runtime/human-in-the-loop.md](./runtime/human-in-the-loop.md) | 审批 interrupt / resume |
 | [runtime/state-persistence.md](./runtime/state-persistence.md) | checkpoint、resume、RunState |

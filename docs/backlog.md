@@ -18,6 +18,18 @@
 | CLI-02 | [~] | `tokenUsage` 累计写入 turn 事件 | `/cost`、L3 trace |
 | CLI-03 | [~] | `modifiedFiles` 计数 footer | edit 结束 stderr |
 
+## P1 — Context Compaction（LLM 增量摘要）
+
+架构：[runtime/context-compaction.md](./architecture/runtime/context-compaction.md) · Phase 0（F 静态、summary 后置、env date 冻结）已合并。
+
+| ID | Phase | 状态 | 任务 | 验收 |
+|----|-------|------|------|------|
+| CTX-CMP-1 | 1 | [x] | `CompactionPolicy` / Port 类型（strategy 固定 `llm`） | shared + `compaction-port.ts` 可编译 |
+| CTX-CMP-2 | 1 | [x] | context 拆分 + `buildCompactionMergePrompt` | context 纯函数 |
+| CTX-CMP-3 | 2 | [x] | `createCompactionPort` + `compactSessionIfNeeded` | LLM-only；失败 event + block |
+| CTX-CMP-4 | 3 | [x] | `context.compacted` 扩展 + CLI L2 + compaction-ledger | 见 cli-ui §L2 |
+| CTX-CMP-5 | 4 | [x] | config.yaml compaction、trace eval、`/context` 指标 | config + env；eval harness；messages/ctx/compact |
+
 ## P2 — 工具与 Core
 
 | ID | 状态 | 任务 | 验收 |
@@ -61,8 +73,8 @@ Handoff · Agent-as-tool · 多 Agent DAG · Guardrails 子系统 · Code Intell
 ## 建议顺序
 
 ```text
-Wave 1: CLI-01~03, TEST-03
-Wave 2: TOOL-06/CTX-01, CLI-05~07, HITL-03~04
+Wave 1: CTX-CMP-1~3（LLM compaction 主路径）, CLI-01~03
+Wave 2: CTX-CMP-4~5, TOOL-06/CTX-01, CLI-05~07, HITL-03~04
 Wave 3: CORE-01, MCP 择要, HITL-05, OBS/TEST-01
 Wave 4: P4+ / Deferred
 ```

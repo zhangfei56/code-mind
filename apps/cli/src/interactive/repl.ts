@@ -404,6 +404,8 @@ async function runInteractiveTurn(
     repoRootFocus: isBroadRepoRootTask(task, state.cwd),
   });
   const { loop } = await createCliAgentLoop(state.cwd, provider, profile, {
+    config,
+    modelKey: state.model ?? provider.name,
     permissionPrompter: {
       approve(sessionId, toolCall, decision, options) {
         return approvalManager.request(sessionId, toolCall, decision.reason, {

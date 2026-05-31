@@ -34,6 +34,7 @@ import {
   loadWorkspaceExtensions,
 } from "@code-mind/agent-composition";
 import { createCliAgentLoop } from "../cli/runtime-deps.js";
+import { buildCompactionRuntimeOverrides } from "../cli/compaction-runtime.js";
 import {
   loadConfig,
   loadConfigForModel,
@@ -246,7 +247,10 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
         repoRootFocus: isBroadRepoRootTask(task, sessionRoot),
         ...(resumeProviderModel !== undefined ? { providerModel: resumeProviderModel } : {}),
       });
-      const { loop } = await createCliAgentLoop(sessionRoot, provider, profile);
+      const { loop } = await createCliAgentLoop(sessionRoot, provider, profile, {
+        config,
+        modelKey: requestedModel ?? provider.name,
+      });
       const session = await runAgentSession({
         task,
         profile,
@@ -271,7 +275,10 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
         repoRootFocus: false,
         ...(executeProviderModel !== undefined ? { providerModel: executeProviderModel } : {}),
       });
-      const { loop } = await createCliAgentLoop(sessionRoot, provider, profile);
+      const { loop } = await createCliAgentLoop(sessionRoot, provider, profile, {
+        config,
+        modelKey: requestedModel ?? provider.name,
+      });
       const session = await executeFromApprovedPlan({
         planSessionId: args.planSessionId,
         ...(args.mode === undefined ? {} : { executionMode: args.mode }),
@@ -387,6 +394,7 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
       profile,
       toolRegistry,
       extensions,
+      runtime: buildCompactionRuntimeOverrides(provider.name, config),
     });
     const session = await runAgentSession({
       task: previewTask,
@@ -607,6 +615,7 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
     profile,
     toolRegistry,
     extensions,
+    runtime: buildCompactionRuntimeOverrides(provider.name, config),
     ...(cliPermissionPrompter === undefined
       ? {}
       : { permissionPrompter: cliPermissionPrompter }),

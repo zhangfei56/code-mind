@@ -1,0 +1,159 @@
+[
+  {
+    "id": "micro-repair-01",
+    "tier": "micro",
+    "category": "repair",
+    "mode": "agent",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "修复测试失败。",
+    "goal": "修复 add 函数后测试通过，不依赖 agent 自报 success。",
+    "maxSteps": 10,
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a - b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ],
+    "graders": {
+      "verifyCommand": "node test.js",
+      "verifyExitCode": 0,
+      "fileContains": [{ "path": "src/math.ts", "pattern": "a \\+ b" }],
+      "forbiddenCompletion": ["stopped_by_limit"]
+    },
+    "tags": ["repair", "outcome"]
+  },
+  {
+    "id": "micro-repair-02",
+    "tier": "micro",
+    "category": "repair",
+    "mode": "agent",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "找出 add 函数为什么错，并修掉。",
+    "goal": "定位、修复、验证闭环。",
+    "maxSteps": 12,
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a - b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ],
+    "graders": {
+      "verifyCommand": "node test.js",
+      "verifyExitCode": 0,
+      "requireVerificationPassed": true
+    },
+    "tags": ["repair", "verification"]
+  },
+  {
+    "id": "micro-verify-01",
+    "tier": "micro",
+    "category": "verify",
+    "mode": "agent",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "帮我验证这个项目当前是否通过测试。",
+    "goal": "以验证为主，有限 step 内完成。",
+    "maxSteps": 8,
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a + b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ],
+    "graders": {
+      "verifyCommand": "node test.js",
+      "verifyExitCode": 0,
+      "maxSteps": 8,
+      "requiredEvents": ["verification.finished"],
+      "forbiddenCompletion": ["stopped_by_limit"]
+    },
+    "tags": ["verify", "process"]
+  },
+  {
+    "id": "micro-implement-01",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "给 math.ts 新增 subtract 函数，并验证。",
+    "goal": "小范围实现后测试通过。",
+    "maxSteps": 12,
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a + b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add; globalThis.subtract = subtract;`, context);\n\nassert.equal(context.add(1, 2), 3);\nassert.equal(context.subtract(5, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ],
+    "graders": {
+      "verifyCommand": "node test.js",
+      "verifyExitCode": 0,
+      "fileContains": [{ "path": "src/math.ts", "pattern": "subtract" }]
+    },
+    "tags": ["implement"]
+  },
+  {
+    "id": "micro-analysis-01",
+    "tier": "micro",
+    "category": "analysis",
+    "mode": "ask",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "请分析这个项目的结构和主要入口。",
+    "goal": "分析类任务应在有限 step 内收敛。",
+    "maxSteps": 8,
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a + b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ],
+    "graders": {
+      "maxSteps": 8,
+      "forbiddenCompletion": ["stopped_by_limit"]
+    },
+    "tags": ["analysis", "process"]
+  },
+  {
+    "id": "micro-false-success-trap",
+    "tier": "micro",
+    "category": "repair",
+    "mode": "agent",
+    "workspace": "examples/ts-bug-demo",
+    "prompt": "测试失败了，帮我看看。",
+    "goal": "grader 必须用测试判据抓住假成功。",
+    "maxSteps": 10,
+    "setupFiles": [
+      {
+        "path": "src/math.ts",
+        "content": "export function add(a: number, b: number): number {\n  return a - b;\n}\n"
+      },
+      {
+        "path": "test.js",
+        "content": "import assert from \"node:assert/strict\";\nimport { readFileSync } from \"node:fs\";\nimport vm from \"node:vm\";\n\nconst source = readFileSync(new URL(\"./src/math.ts\", import.meta.url), \"utf8\")\n  .replace(/export\\s+/g, \"\")\n  .replace(/: number/g, \"\");\n\nconst context = {};\nvm.createContext(context);\nvm.runInContext(`${source}; globalThis.add = add;`, context);\n\nassert.equal(context.add(1, 2), 3);\nconsole.log(\"tests passed\");\n"
+      }
+    ],
+    "graders": {
+      "verifyCommand": "node test.js",
+      "verifyExitCode": 0
+    },
+    "tags": ["repair", "false-success"]
+  }
+]

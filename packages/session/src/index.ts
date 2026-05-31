@@ -6,6 +6,9 @@ export {
 export { revertSession, type RevertSessionResult } from "./session-revert.js";
 export { FileSessionStore } from "./session-store.js";
 export {
+  appendCompactionLedgerRecord,
+} from "./compaction-ledger.js";
+export {
   appendModelUsageRecord,
   buildUsageSummaryFromRun,
   buildUsageSummaryUpdate,

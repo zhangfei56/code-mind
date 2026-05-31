@@ -15,6 +15,23 @@ function str(payload: Record<string, unknown>, key: string): string | undefined 
   return typeof value === "string" ? value : undefined;
 }
 
+function formatCompactionEventLine(p: Record<string, unknown>): string {
+  const strategy = str(p, "strategy") ?? "llm";
+  const compactionCount = num(p, "compactionCount") ?? 0;
+  const evictedMessages = num(p, "evictedMessageCount");
+  const evictedObservations = num(p, "evictedObservationCount");
+  const retainedMessages = num(p, "messageCount") ?? 0;
+  const evictedTotal =
+    evictedMessages !== undefined || evictedObservations !== undefined
+      ? (evictedMessages ?? 0) + (evictedObservations ?? 0)
+      : undefined;
+  const blocks =
+    evictedTotal !== undefined && evictedTotal > 0
+      ? `${evictedTotal} blocks → summary`
+      : `${retainedMessages} msgs retained`;
+  return `context compacted · ${strategy} · ×${compactionCount} · ${blocks}`;
+}
+
 function toolCall(payload: Record<string, unknown>): ToolCall | undefined {
   const value = payload.toolCall;
   if (typeof value !== "object" || value === null) {
@@ -134,7 +151,9 @@ export function renderProgressJournalLine(
         ? "  ✓ Validation passed"
         : `  × Validation failed · ${str(p, "summary") ?? ""}`;
     case "context.compacted":
-      return `  ~ Context compacted · ×${num(p, "compactionCount") ?? 0} · ${num(p, "messageCount") ?? 0} msgs`;
+      return `  ~ ${formatCompactionEventLine(p)}`;
+    case "context.compaction_failed":
+      return `  ~ context compaction failed · ${str(p, "reason") ?? "unknown"}`;
     default:
       return null;
   }
@@ -208,7 +227,9 @@ export function renderAgentEventLine(
         ? "verification passed"
         : `verification failed: ${str(p, "summary") ?? ""}`;
     case "context.compacted":
-      return `context compacted · ×${num(p, "compactionCount") ?? 0} · ${num(p, "messageCount") ?? 0} msgs`;
+      return formatCompactionEventLine(p);
+    case "context.compaction_failed":
+      return `context compaction failed · ${str(p, "reason") ?? "unknown"}`;
     case "turn.finished": {
       const steps = num(p, "steps") ?? 0;
       const parts = [`done · ${str(p, "status")} · ${steps} step${steps === 1 ? "" : "s"}`];

@@ -360,7 +360,18 @@ export class StepJournalRenderer {
       case "context.compacted": {
         const compactionCount = typeof p.compactionCount === "number" ? p.compactionCount : 0;
         const messageCount = typeof p.messageCount === "number" ? p.messageCount : 0;
-        this.pane.appendCompactLine(compactionCount, messageCount);
+        const strategy = typeof p.strategy === "string" ? p.strategy : "llm";
+        const evictedMessages =
+          typeof p.evictedMessageCount === "number" ? p.evictedMessageCount : 0;
+        const evictedObservations =
+          typeof p.evictedObservationCount === "number" ? p.evictedObservationCount : 0;
+        const evictedBlocks = evictedMessages + evictedObservations;
+        this.pane.appendCompactLine(
+          compactionCount,
+          messageCount,
+          strategy,
+          evictedBlocks > 0 ? evictedBlocks : undefined,
+        );
         if (this.flatActivityLog && this.paneCommitted) {
           this.emitFlatSystemUpdate(out);
         } else if (this.paneCommitted) {

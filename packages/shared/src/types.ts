@@ -148,6 +148,7 @@ export interface ModelUsageRecord {
   model: string;
   finishReason?: string;
   durationMs?: number;
+  purpose?: "agent_step" | "compaction";
   usage: TokenUsage;
 }
 
@@ -254,23 +255,14 @@ export interface ContextBuildInput {
   session: AgentSession;
   task: UserTask;
   profile: AgentProfile;
-  /** Live run progress injected each model step; omit for static context tests. */
+  /** Stable run context for prompt assembly (mode/cwd); volatile progress stays in RunState. */
   runFacts?: RunFactsSnapshot;
 }
 
-/** Serializable run progress for prompt assembly (mapped from core RunState). */
+/** Prompt-only run context; volatile progress lives in RunState and message history. */
 export interface RunFactsSnapshot {
   mode: AgentMode;
-  step: number;
-  maxSteps?: number;
-  closingTurn?: boolean;
-  modifiedFiles: string[];
-  lastTool?: { name: string; at: string };
-  lastActivity?: import("./activity.js").ActivityKind;
-  toolCounts?: import("./activity.js").ToolActivityCounts;
-  lastVerification?: VerificationResult;
   atWorkspaceRoot: boolean;
-  planModeActive?: boolean;
 }
 
 export interface ContextSnapshot {

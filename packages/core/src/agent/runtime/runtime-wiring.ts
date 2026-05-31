@@ -8,6 +8,7 @@ import type { SessionInitDeps } from "./session-init.js";
 import type { SessionLifecycleDeps } from "./session-lifecycle.js";
 import {
   createStaticRuntimePorts,
+  createCompactionPort,
   type StaticRuntimePorts,
 } from "./ports/index.js";
 import {
@@ -17,6 +18,7 @@ import {
 import type { RuntimeDependencies } from "./types.js";
 import { setSessionStatus } from "./session-status.js";
 import { AgentLoopController } from "./agent-loop-controller.js";
+import { DEFAULT_COMPACTION_POLICY, resolveCompactionPolicyFromEnv } from "@code-mind/shared";
 
 /** Resolved runtime graph for one AgentLoopController instance (pre-run / static). */
 export interface AgentLoopRuntimeWiring {
@@ -51,11 +53,17 @@ export function createAgentLoopRuntimeWiring(
     reviewEngine: deps.reviewEngine,
   });
 
+  const compactionPolicy =
+    dependencies.compactionPolicy ?? resolveCompactionPolicyFromEnv(DEFAULT_COMPACTION_POLICY);
+
   const lifecycle: SessionLifecycleDeps = {
     hookSystem: deps.hookSystem,
     review: staticPorts.review,
     publish: (input, event) => publish(input, event),
     setSessionStatus,
+    compactionPolicy,
+    createCompactionPort: (runModel) =>
+      createCompactionPort(dependencies.compactionModel ?? runModel, compactionPolicy),
   };
 
   const sessionInit: SessionInitDeps = {

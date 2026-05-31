@@ -17,6 +17,7 @@ import { authorizeToolCall } from "./tool-call/authorization.js";
 import {
   handlePostPatchVerification,
   handlePostShellReverification,
+  handleVerifyOnlyAutomaticVerification,
   handlePostToolChangeTracking,
   persistToolResult,
   runPostExecutionHooks,
@@ -127,6 +128,7 @@ export async function handleToolCall(
     await handlePostToolChangeTracking(ctx, result);
     await handlePostPatchVerification(deps, ctx, result);
     await handlePostShellReverification(deps, ctx, result);
+    await handleVerifyOnlyAutomaticVerification(deps, ctx, result);
     await runPostExecutionHooks(deps, ctx, result);
 
     await ctx.sessionStore.saveCurrentSummary(

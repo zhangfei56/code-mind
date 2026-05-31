@@ -5,6 +5,10 @@ import { runKernelObservabilityTests, runCoreStabilityAuditTests } from "./unit/
 import { runCapabilitySelectorTests } from "./unit/capability-selector.test.js";
 import { runSkillModeTests } from "./unit/skill-mode.test.js";
 import { runAgentModeBenchmarkTests } from "./unit/agent-mode-benchmark.test.js";
+import { runBenchmarkGraderTests } from "./unit/benchmark-graders.test.js";
+import { runBenchmarkWorkloadTests } from "./unit/benchmark-workload.test.js";
+import { runSwebenchWorkspaceTests } from "./unit/swebench-workspace.test.js";
+import { runVerifyOnlyAutomaticVerificationTests } from "./unit/verify-only-automatic.test.js";
 import { runApiRunTests } from "./unit/api-run.test.js";
 import { runAsyncRunManagerTests } from "./unit/async-run-manager.test.js";
 import { runHttpPlanApprovalQueueTests, runApiPlanApprovalRouteTests, runWebSocketStreamTests } from "./unit/api-plan-approval.test.js";
@@ -28,6 +32,10 @@ import { runProductPromptTests } from "./unit/product-prompt.test.js";
 import { runContextSnapshotTests } from "./unit/context-snapshot.test.js";
 import { runRunFactsTests } from "./unit/run-facts.test.js";
 import { runContextManagerTests } from "./unit/context.test.js";
+import { runCompactionTests } from "./unit/compaction.test.js";
+import { runCompactionLifecycleTests } from "./unit/compaction-lifecycle.test.js";
+import { runCompactionEvalTests } from "./unit/compaction-eval.test.js";
+import { runCompactionConfigTests } from "./unit/compaction-config.test.js";
 import { runHighRiskToolTests } from "./unit/high-risk-tools.test.js";
 import { runInteractiveTests } from "./unit/interactive.test.js";
 import { runApprovalCoordinatorTests } from "./unit/approval-coordinator.test.js";
@@ -115,6 +123,10 @@ const tests: TestCase[] = [
   { name: "config show", run: runConfigShowTests },
   { name: "config", run: runConfigTests },
   { name: "context manager", run: runContextManagerTests },
+  { name: "compaction", run: runCompactionTests },
+  { name: "compaction lifecycle", run: runCompactionLifecycleTests },
+  { name: "compaction eval", run: runCompactionEvalTests },
+  { name: "compaction config", run: runCompactionConfigTests },
   { name: "run facts", run: runRunFactsTests },
   { name: "context snapshot", run: runContextSnapshotTests },
   { name: "product prompts", run: runProductPromptTests },
@@ -151,6 +163,10 @@ const tests: TestCase[] = [
   { name: "websocket stream", run: runWebSocketStreamTests },
   { name: "api approval", run: runApiApprovalTests },
   { name: "agent mode benchmark", run: runAgentModeBenchmarkTests },
+  { name: "benchmark graders", run: runBenchmarkGraderTests },
+  { name: "benchmark workload loaders", run: runBenchmarkWorkloadTests },
+  { name: "swebench workspace", run: runSwebenchWorkspaceTests },
+  { name: "verify-only automatic verification", run: runVerifyOnlyAutomaticVerificationTests },
   { name: "agent mode runtime", run: runAgentModeRuntimeTests },
   { name: "no keyword classification", run: runNoKeywordClassificationTests },
   { name: "tools", run: runToolTests },

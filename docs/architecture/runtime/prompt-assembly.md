@@ -1,7 +1,8 @@
 # Prompt 拼接流程
 
 > scope: **prompt-assembly**  
-> 本文说明何时拼接 prompt、拼接什么、哪些数据不应进入 prompt。
+> 本文说明何时拼接 prompt、拼接什么、哪些数据不应进入 prompt。  
+> 压缩策略与 Tier 分层见 [context-compaction.md](./context-compaction.md)。
 
 ---
 
@@ -189,35 +190,33 @@ Run state persistence
 
 ## ModelRequest 形状
 
+`ContextManager.build()` 的实际顺序以 [context-compaction.md §5](./context-compaction.md#5-注入-prompt-的顺序cache-对齐) 为准。要点：
+
 ```text
-ModelRequest
-  messages:
-    1. system base prompt
-    2. runtime environment facts
-    3. workspace/tool-use rules
-    4. mode policy
-    5. permission summary
-    6. model-specific instructions
-    7. active skill/plugin instructions
-    8. subagent/plan-specific instructions
-    9. run facts / progress state
-    10. project rules as untrusted content
-    11. memory as untrusted/low-priority content
-    12. compacted history
-    13. recent relevant tool observations
-    14. retrieved code context / git diff / test summary
-    15. output contract
-    16. user question
+messages（固定顺序，cache 友好）
+  1–8.  static system 层（base / model / env / mode / permission / run facts / plan·subagent / rules·memory）
+  9.    capability blocks（model-step-assembly，first user 前）
+  10.   session.messages（U / R / T，append-only 对话主体）
+  11.   compactionSummary system（条件；必须在 history 之后，不可插到 10 之前）
+  12.   closing turn system（model-step-assembly，条件）
 
-  tools:
-    当前 mode + runState + skill/plugin 共同允许的 tool schemas
+tools:
+  当前 mode + runState + skill/plugin 共同允许的 tool schemas
+  closing turn / summary retry / LLM compaction 摘要调用 → tools = []
 
-  metadata:
-    retry / trace / adapter 所需 runtime 信息
-
-  abortSignal:
-    runtime 取消信号
+metadata / abortSignal:
+  retry / trace / adapter 所需 runtime 信息；runtime 取消信号
 ```
+
+**不进 prompt 的 volatile 状态**（只在 RunState / runtime 控制）：
+
+```text
+step / maxSteps 预算
+modifiedFiles 清单（tool 历史 + git_status 足够）
+RunFacts 动态 progress（已移除；F 仅 mode + atWorkspaceRoot）
+```
+
+compaction 摘要内容约束见 [context-compaction.md §4.3](./context-compaction.md#43-明确不进-summary产品决策)。
 
 ## 输出给后续阶段
 

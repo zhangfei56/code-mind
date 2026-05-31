@@ -1,0 +1,181 @@
+[
+  {
+    "id": "polyglot-py-beer-song",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement beer-song exercise; all pytest tests pass.",
+    "polyglot": { "language": "python", "exercise": "beer-song" },
+    "tags": ["polyglot", "python", "aider"]
+  },
+  {
+    "id": "polyglot-py-grep",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement grep exercise; all pytest tests pass.",
+    "polyglot": { "language": "python", "exercise": "grep" },
+    "tags": ["polyglot", "python", "aider"]
+  },
+  {
+    "id": "polyglot-py-hangman",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement hangman exercise; all pytest tests pass.",
+    "polyglot": { "language": "python", "exercise": "hangman" },
+    "tags": ["polyglot", "python", "aider"]
+  },
+  {
+    "id": "polyglot-py-phone-number",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement phone-number exercise; all pytest tests pass.",
+    "polyglot": { "language": "python", "exercise": "phone-number" },
+    "tags": ["polyglot", "python", "aider"]
+  },
+  {
+    "id": "polyglot-py-pig-latin",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement pig-latin exercise; all pytest tests pass.",
+    "polyglot": { "language": "python", "exercise": "pig-latin" },
+    "tags": ["polyglot", "python", "aider"]
+  },
+  {
+    "id": "polyglot-py-bowling",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement bowling exercise; all pytest tests pass.",
+    "polyglot": { "language": "python", "exercise": "bowling" },
+    "maxSteps": 16,
+    "tags": ["polyglot", "python", "aider"]
+  },
+  {
+    "id": "polyglot-py-connect",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement connect exercise; all pytest tests pass.",
+    "polyglot": { "language": "python", "exercise": "connect" },
+    "tags": ["polyglot", "python", "aider"]
+  },
+  {
+    "id": "polyglot-py-affine-cipher",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement affine-cipher exercise; all pytest tests pass.",
+    "polyglot": { "language": "python", "exercise": "affine-cipher" },
+    "tags": ["polyglot", "python", "aider"]
+  },
+  {
+    "id": "polyglot-js-binary",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement binary exercise; all jest tests pass.",
+    "polyglot": { "language": "javascript", "exercise": "binary" },
+    "tags": ["polyglot", "javascript", "aider"]
+  },
+  {
+    "id": "polyglot-js-beer-song",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement beer-song exercise; all jest tests pass.",
+    "polyglot": { "language": "javascript", "exercise": "beer-song" },
+    "tags": ["polyglot", "javascript", "aider"]
+  },
+  {
+    "id": "polyglot-js-affine-cipher",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement affine-cipher exercise; all jest tests pass.",
+    "polyglot": { "language": "javascript", "exercise": "affine-cipher" },
+    "tags": ["polyglot", "javascript", "aider"]
+  },
+  {
+    "id": "polyglot-js-grep",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement grep exercise; all jest tests pass.",
+    "polyglot": { "language": "javascript", "exercise": "grep" },
+    "tags": ["polyglot", "javascript", "aider"]
+  },
+  {
+    "id": "polyglot-js-house",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement house exercise; all jest tests pass.",
+    "polyglot": { "language": "javascript", "exercise": "house" },
+    "tags": ["polyglot", "javascript", "aider"]
+  },
+  {
+    "id": "polyglot-js-ledger",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement ledger exercise; all jest tests pass.",
+    "polyglot": { "language": "javascript", "exercise": "ledger" },
+    "maxSteps": 16,
+    "tags": ["polyglot", "javascript", "aider"]
+  },
+  {
+    "id": "polyglot-js-meetup",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement meetup exercise; all jest tests pass.",
+    "polyglot": { "language": "javascript", "exercise": "meetup" },
+    "tags": ["polyglot", "javascript", "aider"]
+  },
+  {
+    "id": "polyglot-js-ocr-numbers",
+    "tier": "micro",
+    "category": "implement",
+    "mode": "agent",
+    "workspace": ".",
+    "prompt": "",
+    "goal": "Implement ocr-numbers exercise; all jest tests pass.",
+    "polyglot": { "language": "javascript", "exercise": "ocr-numbers" },
+    "maxSteps": 16,
+    "tags": ["polyglot", "javascript", "aider"]
+  }
+]

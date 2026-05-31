@@ -238,6 +238,7 @@ export async function runRuntimePortsTests(): Promise<void> {
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
       }),
+      recordCompaction: async () => {},
       mergeRunUsageSummary: async () => ({
         id: session.id,
         projectPath: session.workspaceRoot,

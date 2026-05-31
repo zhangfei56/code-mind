@@ -3,6 +3,7 @@ import type {
   AgentProfile,
   AgentSession,
   ApprovalRecord,
+  CompactionLedgerRecord,
   ModelUsageRecord,
   ReviewResult,
   SessionManifest,
@@ -40,6 +41,8 @@ export interface SessionStorePort {
   getPendingApprovals(sessionId: string): Promise<ApprovalRecord[]>;
   /** Append one model API usage row and roll up SessionManifest.usageSummary. */
   recordModelUsage(sessionId: string, record: ModelUsageRecord): Promise<SessionManifest>;
+  /** Append one compaction audit row to compaction-ledger.jsonl. */
+  recordCompaction(sessionId: string, record: CompactionLedgerRecord): Promise<void>;
   /** Merge final run usage (e.g. when per-call ledger was skipped). */
   mergeRunUsageSummary(
     sessionId: string,

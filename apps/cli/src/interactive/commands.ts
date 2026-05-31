@@ -24,6 +24,9 @@ export interface InteractiveState {
   filesChanged: string[];
   commandsRun: number;
   compactionCount: number;
+  promptMessageCount: number;
+  contextTokens: number | undefined;
+  maxContextTokens: number | undefined;
   tokenUsage: TokenUsage | undefined;
   lastShellOutput: string | undefined;
   journalExpand?: (() => string[]) | undefined;

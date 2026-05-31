@@ -11,6 +11,7 @@ import type {
   AgentPlan,
   AgentSession,
   ApprovalRecord,
+  CompactionLedgerRecord,
   ModelUsageRecord,
   ReviewResult,
   SessionManifest,
@@ -24,6 +25,7 @@ import type { PersistedRunState, StoredRunState } from "@code-mind/shared";
 import { SessionManifestStore } from "./session-manifest.js";
 import { restoreAgentSession } from "./session-restore.js";
 import { writeSummary } from "./summary-writer.js";
+import { appendCompactionLedgerRecord } from "./compaction-ledger.js";
 import {
   appendModelUsageRecord,
   buildUsageSummaryFromRun,
@@ -305,6 +307,13 @@ export class FileSessionStore {
     const manifest = await this.readManifest(sessionId);
     const usageSummary = buildUsageSummaryUpdate(manifest, record);
     return this.updateManifest(sessionId, { usageSummary });
+  }
+
+  async recordCompaction(
+    sessionId: string,
+    record: CompactionLedgerRecord,
+  ): Promise<void> {
+    await appendCompactionLedgerRecord(this.getSessionDir(sessionId), record);
   }
 
   async mergeRunUsageSummary(

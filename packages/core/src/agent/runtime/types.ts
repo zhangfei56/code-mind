@@ -48,6 +48,8 @@ export interface RuntimeDependencies {
   permissionPrompter?: PermissionPrompter;
   verificationPipeline?: VerificationPipeline;
   reviewEngine?: ReviewEngine;
+  compactionPolicy?: import("@code-mind/shared").CompactionPolicy;
+  compactionModel?: ModelProvider;
 }
 
 export function createToolContext(

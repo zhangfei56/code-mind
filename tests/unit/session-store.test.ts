@@ -65,4 +65,26 @@ export async function runSessionStoreTests(): Promise<void> {
   assert.match(manifest, /"model": "local"/);
   assert.match(manifest, /"completion": "modified_verified"/);
   assert.match(approvals, /"status": "pending"/);
+
+  await store.recordCompaction(session.id, {
+    ts: "2026-05-31T08:00:00.000Z",
+    step: 2,
+    compactionCount: 1,
+    strategy: "llm",
+    retainedMessages: 8,
+    retainedObservations: 4,
+    evictedMessages: 12,
+    evictedObservations: 6,
+    durationMs: 420,
+    path: "compact/compact-001.md",
+    model: "deepseek",
+    usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+  });
+
+  const ledger = readFileSync(
+    join(store.getSessionDir(session.id), "compaction-ledger.jsonl"),
+    "utf8",
+  );
+  assert.match(ledger, /"strategy":"llm"/);
+  assert.match(ledger, /"evictedMessages":12/);
 }

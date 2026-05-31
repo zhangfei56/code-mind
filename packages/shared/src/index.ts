@@ -1,3 +1,4 @@
+export * from "./compaction.js";
 export * from "./agent-modes.js";
 export * from "./activity.js";
 export * from "./agent-event.js";

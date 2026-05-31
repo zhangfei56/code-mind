@@ -1,4 +1,4 @@
-import type { AgentSession, RuntimeInput } from "@code-mind/shared";
+import type { AgentSession, RuntimeInput, ToolCall } from "@code-mind/shared";
 import { createId, nowIso } from "@code-mind/shared";
 import type { SessionStorePort } from "./ports/session-store-port.js";
 import { EDIT_AGENT_VERIFY_OPTIONS } from "@code-mind/verify";
@@ -9,7 +9,9 @@ import type { RunState } from "./run-state.js";
 import { getEffectiveMaxSteps } from "./run-state.js";
 import { summarizeVerification } from "./helpers.js";
 import { applyRunKernelEventAndCheckpoint, runKernelCheckpointOptions } from "./kernel-runtime.js";
+import { setActivity } from "./run-facts.js";
 import {
+  activityUpdatedEvent,
   messageUserEvent,
   recoveryTriggeredEvent,
   verificationFinishedEvent,
@@ -133,4 +135,65 @@ export async function runAutomaticVerification(
       ...(verification.passed ? {} : { error: verification.summary }),
     }),
   );
+}
+
+const VERIFY_SHELL_COMMAND_PATTERN =
+  /\b(npm test|pnpm test|yarn test|node test|pytest|cargo test|go test|vitest|jest)\b/i;
+
+export function shellLooksLikeVerification(toolCall: ToolCall): boolean {
+  if (toolCall.name !== "run_shell") {
+    return false;
+  }
+  const command =
+    typeof toolCall.arguments.command === "string" ? toolCall.arguments.command : "";
+  return VERIFY_SHELL_COMMAND_PATTERN.test(command);
+}
+
+export function shouldRunVerifyOnlyAutomaticVerification(
+  session: AgentSession,
+  runState: RunState,
+  strategy: LoopPolicy,
+): boolean {
+  if (session.task.mode !== "agent" && session.task.mode !== "edit") {
+    return false;
+  }
+  if (runState.progress.modifiedFiles.size > 0) {
+    return false;
+  }
+  if (runState.verification.lastVerification !== undefined) {
+    return false;
+  }
+  return strategy.autoVerifyAfterPatch;
+}
+
+export async function runVerifyOnlyAutomaticVerificationIfNeeded(
+  deps: VerificationRunnerDeps,
+  sessionStore: SessionStorePort,
+  session: AgentSession,
+  input: RuntimeInput,
+  runState: RunState,
+  stepNumber: number,
+  strategy: LoopPolicy,
+): Promise<boolean> {
+  if (!shouldRunVerifyOnlyAutomaticVerification(session, runState, strategy)) {
+    return false;
+  }
+
+  setActivity(runState.progress, "verifying");
+  await deps.publish(input, activityUpdatedEvent("verifying", undefined, stepNumber));
+  await runAutomaticVerification(
+    deps,
+    sessionStore,
+    session,
+    input,
+    runState,
+    stepNumber,
+    strategy,
+  );
+  if (runState.verification.lastVerification?.passed) {
+    setActivity(runState.progress, "summarizing");
+  } else {
+    setActivity(runState.progress, "running");
+  }
+  return true;
 }

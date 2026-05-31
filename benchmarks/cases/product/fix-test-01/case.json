@@ -1,0 +1,15 @@
+{
+  "id": "product-fix-test-01",
+  "mode": "agent",
+  "goal": "Vague 'fix test' prompt should repair the failing test without over-scoping.",
+  "maxSteps": 12,
+  "graders": {
+    "verifyCommand": "node test.js",
+    "verifyExitCode": 0,
+    "fileContains": [{ "path": "src/math.ts", "pattern": "a \\+ b" }],
+    "maxSteps": 12,
+    "forbiddenCompletion": ["stopped_by_limit"]
+  },
+  "source": "session_e228ca4b-0ee1-4516-9260-c8a69678c37e",
+  "tags": ["product", "vague-prompt", "repair"]
+}

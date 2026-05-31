@@ -2,7 +2,9 @@ import type {
   AgentEventInput,
   AgentResult,
   AgentSession,
+  CompactionPolicy,
   CompletionKind,
+  ModelProvider,
   RuntimeInput,
   SessionStatus,
   TokenUsage,
@@ -10,8 +12,17 @@ import type {
   HookInput,
   HookResult,
 } from "@code-mind/shared";
-import { applyCompaction, buildCompactionSummary, shouldCompact } from "@code-mind/context";
+import { DEFAULT_COMPACTION_POLICY, nowIso } from "@code-mind/shared";
+import {
+  applyCompaction,
+  buildCompactionSummarizeInput,
+  estimateSessionContextChars,
+  hasCompactionEviction,
+  shouldCompact,
+} from "@code-mind/context";
 import type { SessionStorePort } from "./ports/session-store-port.js";
+import type { CompactionPort } from "./ports/compaction-port.js";
+import { createCompactionPort } from "./ports/compaction-port.js";
 import { buildCurrentSummary } from "@code-mind/session";
 import type { HookSystem } from "@code-mind/capabilities";
 import type { ReviewPort, RunKernelPorts } from "../kernel/ports.js";
@@ -23,6 +34,7 @@ import { getEffectiveMaxSteps } from "./run-state.js";
 import { applyRunKernelEventAndCheckpoint, runKernelCheckpointOptions, type RunKernelCheckpointOptions } from "./kernel-runtime.js";
 import {
   contextCompactedEvent,
+  contextCompactionFailedEvent,
   hookExecutedEvent,
   runFinishedEvent,
   turnFinishedEvent,
@@ -65,6 +77,8 @@ export interface SessionLifecycleDeps {
       modifiedFiles: string[];
     }>,
   ) => Promise<void>;
+  compactionPolicy?: CompactionPolicy;
+  createCompactionPort?: (model: ModelProvider) => CompactionPort;
 }
 
 export async function completeRun(
@@ -175,18 +189,78 @@ export async function compactSessionIfNeeded(
   deps: SessionLifecycleDeps,
   sessionStore: SessionStorePort,
   session: AgentSession,
-  modelName: string,
+  model: ModelProvider,
   input?: RuntimeInput,
   runState?: RunState,
 ): Promise<void> {
-  if (!shouldCompact(session)) {
+  const policy = deps.compactionPolicy ?? DEFAULT_COMPACTION_POLICY;
+  if (!shouldCompact(session, policy)) {
     return;
   }
 
+  const contextChars = estimateSessionContextChars(session);
+  if (
+    typeof session.metadata?.compactionBlockedContextChars === "number" &&
+    session.metadata.compactionBlockedContextChars === contextChars
+  ) {
+    return;
+  }
+
+  const createPort =
+    deps.createCompactionPort ??
+    ((provider: ModelProvider) => createCompactionPort(provider, policy));
+  const compactionPort = createPort(model);
+  const summarizeInput = buildCompactionSummarizeInput(session, policy);
+  if (!hasCompactionEviction(summarizeInput)) {
+    return;
+  }
+
+  const step = runState?.progress.lastCompletedStep ?? 0;
+  const maxSteps = runState ? getEffectiveMaxSteps(runState) : 0;
+  const auditModelName = policy.modelName ?? model.name;
+
   await deps.setSessionStatus(sessionStore, session.id, "compacting", input);
-  const summary = buildCompactionSummary(session);
-  const compactPath = await sessionStore.saveCompactSummary(session.id, summary);
-  applyCompaction(session, summary);
+  const started = Date.now();
+  let result;
+  try {
+    result = await compactionPort.summarize(summarizeInput, {
+      ...(input?.abortSignal === undefined ? {} : { abortSignal: input.abortSignal }),
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    const durationMs = Date.now() - started;
+    session.metadata = {
+      ...session.metadata,
+      compactionBlockedContextChars: contextChars,
+    };
+    await deps.publish(
+      input,
+      contextCompactionFailedEvent({
+        step,
+        maxSteps,
+        contextChars,
+        reason,
+        modelName: auditModelName,
+        evictedMessageCount: summarizeInput.evictedMessages.length,
+        evictedObservationCount: summarizeInput.evictedObservations.length,
+        durationMs,
+      }),
+    );
+    await input?.eventBus?.emitProcessLog("core.session-lifecycle", "Context compaction failed.", {
+      sessionId: session.id,
+      reason,
+      contextChars,
+      durationMs,
+    });
+    await deps.setSessionStatus(sessionStore, session.id, "running", input);
+    return;
+  }
+  const durationMs = result.durationMs ?? Date.now() - started;
+  const compactPath = await sessionStore.saveCompactSummary(
+    session.id,
+    result.summaryMarkdown,
+  );
+  applyCompaction(session, result.summaryMarkdown, policy);
   const compactionCount =
     typeof session.metadata?.compactionCount === "number"
       ? session.metadata.compactionCount
@@ -194,16 +268,48 @@ export async function compactSessionIfNeeded(
   await deps.publish(
     input,
     contextCompactedEvent({
-      step: runState?.progress.lastCompletedStep ?? 0,
-      maxSteps: runState ? getEffectiveMaxSteps(runState) : 0,
+      step,
+      maxSteps,
       compactionCount,
       messageCount: session.messages.length,
+      evictedMessageCount: summarizeInput.evictedMessages.length,
+      evictedObservationCount: summarizeInput.evictedObservations.length,
       path: compactPath,
+      strategy: result.strategy,
+      ...(result.usage === undefined ? {} : { usage: result.usage }),
+      durationMs,
     }),
   );
+  await sessionStore.recordCompaction(session.id, {
+    ts: nowIso(),
+    ...(input?.eventBus?.runId === undefined ? {} : { runId: input.eventBus.runId }),
+    step,
+    compactionCount,
+    strategy: result.strategy,
+    retainedMessages: session.messages.length,
+    retainedObservations: session.observations.length,
+    evictedMessages: summarizeInput.evictedMessages.length,
+    evictedObservations: summarizeInput.evictedObservations.length,
+    durationMs,
+    path: compactPath,
+    model: result.modelName,
+    ...(result.usage === undefined ? {} : { usage: result.usage }),
+  });
+  if (result.usage) {
+    await sessionStore.recordModelUsage(session.id, {
+      ts: nowIso(),
+      ...(input?.eventBus?.runId === undefined ? {} : { runId: input.eventBus.runId }),
+      step,
+      model: result.modelName,
+      finishReason: "stop",
+      purpose: "compaction",
+      durationMs,
+      usage: result.usage,
+    });
+  }
   await sessionStore.saveCurrentSummary(
     session.id,
-    buildCurrentSummary(session, modelName),
+    buildCurrentSummary(session, model.name),
   );
   await deps.setSessionStatus(sessionStore, session.id, "running", input);
 }

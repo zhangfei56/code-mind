@@ -1,5 +1,5 @@
 import type { AgentMode, AgentPlan, TokenUsage } from "@code-mind/shared";
-import { formatTokenUsageSummary } from "../ui/format.js";
+import { formatContextUsage, formatTokenUsageSummary } from "../ui/format.js";
 import { securityInfoForMode } from "../ui/header-details.js";
 import { shortPath } from "../ui/theme.js";
 import { truncate } from "./state.js";
@@ -9,6 +9,9 @@ export interface TuiContextSnapshot {
   filesChanged: string[];
   commandsRun: number;
   compactionCount: number;
+  promptMessageCount: number;
+  contextTokens?: number;
+  maxContextTokens?: number;
   tokenUsage?: TokenUsage;
   activityDetail: string;
   step: number;
@@ -30,6 +33,12 @@ export function renderTuiContextPanel(input: TuiContextSnapshot): string {
     `  Files read     ${input.filesRead.length}`,
     `  Files changed  ${input.filesChanged.length}`,
     `  Commands run   ${input.commandsRun}`,
+    `  Messages       ${input.promptMessageCount || "n/a"}`,
+    `  Context        ${
+      input.contextTokens === undefined
+        ? "n/a"
+        : formatContextUsage(input.contextTokens, input.maxContextTokens)
+    }`,
     `  Compactions    ${input.compactionCount}`,
   ];
 

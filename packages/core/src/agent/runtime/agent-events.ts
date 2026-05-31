@@ -343,10 +343,33 @@ export function contextCompactedEvent(input: {
   maxSteps: number;
   compactionCount: number;
   messageCount: number;
+  evictedMessageCount?: number;
+  evictedObservationCount?: number;
   path?: string;
+  strategy?: "llm";
+  usage?: import("@code-mind/shared").TokenUsage;
+  durationMs?: number;
 }): AgentEventInput {
   return {
     kind: "context.compacted",
+    ...stepCorrelation(input.step),
+    payload: input,
+  };
+}
+
+export function contextCompactionFailedEvent(input: {
+  step: number;
+  maxSteps: number;
+  contextChars: number;
+  reason: string;
+  modelName: string;
+  evictedMessageCount: number;
+  evictedObservationCount: number;
+  durationMs?: number;
+}): AgentEventInput {
+  return {
+    kind: "context.compaction_failed",
+    level: "warn",
     ...stepCorrelation(input.step),
     payload: input,
   };

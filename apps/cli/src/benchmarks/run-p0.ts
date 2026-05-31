@@ -1,13 +1,5 @@
-import {
-  cp,
-  mkdir,
-  mkdtemp,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { loadConfigForModel } from "@code-mind/config";
 import { createModelProvider } from "@code-mind/models";
 import { createDefaultProfile } from "../ui/prompt.js";
@@ -16,25 +8,14 @@ import { createId } from "@code-mind/shared";
 import { nowIso } from "@code-mind/shared";
 import type { AgentResult, UserTask } from "@code-mind/shared";
 import { resolveBenchmarkMode } from "./benchmark-mode.js";
+import type { BenchmarkCase } from "./benchmark-types.js";
+import { prepareBenchmarkWorkspace } from "./benchmark-workspace.js";
 import {
   applyRecommendedMaxSteps,
   getEffectiveResultStatus,
   isBroadRepoRootTask,
   runAgentSession,
 } from "@code-mind/core";
-
-interface BenchmarkCase {
-  id: string;
-  mode: import("@code-mind/shared").AgentMode;
-  workspace: string;
-  prompt: string;
-  goal: string;
-  maxSteps?: number;
-  setupFiles?: Array<{
-    path: string;
-    content: string;
-  }>;
-}
 
 interface BenchmarkRunResult {
   id: string;
@@ -56,51 +37,6 @@ function countBy<T extends string>(values: T[]): Record<string, number> {
   }, {});
 }
 
-function shouldCopyBenchmarkPath(path: string): boolean {
-  const normalized = path.replaceAll("\\", "/");
-  return ![
-    "/.git",
-    "/.agent",
-    "/node_modules",
-    "/dist",
-    "/coverage",
-    "/.DS_Store",
-  ].some((segment) => normalized.includes(segment));
-}
-
-async function createIsolatedWorkspace(
-  sourceWorkspace: string,
-  caseId: string,
-): Promise<{ workspaceRoot: string; cleanup: () => Promise<void> }> {
-  const tempRoot = await mkdtemp(join(tmpdir(), `code-mind-benchmark-${caseId}-`));
-  const workspaceRoot = join(tempRoot, basename(sourceWorkspace));
-  await cp(sourceWorkspace, workspaceRoot, {
-    recursive: true,
-    filter: shouldCopyBenchmarkPath,
-  });
-  return {
-    workspaceRoot,
-    async cleanup() {
-      await rm(tempRoot, { recursive: true, force: true });
-    },
-  };
-}
-
-async function applyBenchmarkSetup(
-  workspaceRoot: string,
-  files: BenchmarkCase["setupFiles"],
-): Promise<void> {
-  if (!files || files.length === 0) {
-    return;
-  }
-
-  for (const file of files) {
-    const destination = join(workspaceRoot, file.path);
-    await mkdir(dirname(destination), { recursive: true });
-    await writeFile(destination, file.content, "utf8");
-  }
-}
-
 async function main(): Promise<void> {
   const root = resolve(process.cwd());
   const workloadFile = process.env.BENCHMARK_WORKLOAD ?? "p0-workload.json";
@@ -120,9 +56,8 @@ async function main(): Promise<void> {
 
   for (const item of cases) {
     const sourceWorkspace = resolve(root, item.workspace);
-    const isolated = await createIsolatedWorkspace(sourceWorkspace, item.id);
+    const isolated = await prepareBenchmarkWorkspace(sourceWorkspace, item);
     try {
-      await applyBenchmarkSetup(isolated.workspaceRoot, item.setupFiles);
       const { loop } = await createCliAgentLoop(
         isolated.workspaceRoot,
         provider,
@@ -130,6 +65,8 @@ async function main(): Promise<void> {
           repoRootFocus: item.workspace === ".",
         }),
         {
+          config,
+          modelKey: modelName ?? provider.name,
           permissionPrompter: {
             async approve() {
               return { approved: true, approvalId: createId("approval") };

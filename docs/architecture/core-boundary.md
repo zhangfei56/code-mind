@@ -47,6 +47,7 @@ apps = composition root
 - `createStaticRuntimePorts` / `createRunScopedKernelPorts` 及 port factory helpers
 - `HumanApprovalPort` / `HumanApprovalPortAdapter`（含 `request` + `resolve`；`ApprovalFlowCallbacks` 在 kernel）
 - `ObservationPort` / `VerificationPort` / `ReviewPort` 类型（adapter 在 runtime/ports）
+- `CompactionPort`（Phase 1+；LLM 增量摘要 adapter，`@code-mind/context` 不得直接调 `ModelProvider`）
 - runtime 测试面：`finalizeResult`、`resolvePermission`、`runAutomaticVerification`、`completeRun`、exploration-evidence helpers、plan-mode tool/schema helpers、常用 `agent-events` 工厂、`syncModifiedFilesFromWorkspace`
 
 以下 **不再** 由 core 实现或导出（使用 owning package）：
@@ -78,7 +79,8 @@ apps = composition root
 | `agent/runtime/tool-schema-selection.ts` | keep | Structured tool schema selection。 |
 | `agent/runtime/tool-call-handler.ts` | keep-refactor | Runtime adapter；执行走 ports。 |
 | `agent/runtime/permission.ts` | keep-refactor | 审批流；策略在 `@code-mind/security`。 |
-| `agent/runtime/session-lifecycle.ts` | keep | 经 `SessionStorePort` 持久化。 |
+| `agent/runtime/session-lifecycle.ts` | keep | 经 `SessionStorePort` 持久化；`compactSessionIfNeeded` 编排 LLM Port → persist；失败 emit + debounce。 |
+| `agent/runtime/ports/compaction-port.ts` | keep | `CompactionPort` 契约 + `createCompactionPort`（LLM-only，失败 throw）。 |
 | `agent/runtime/ports/session-store-port.ts` | keep | `SessionStorePort` 契约 + `createSessionStorePort(FileSessionStore)` adapter。 |
 | `agent/result-builder.ts` | keep | Core result construction。 |
 | `agent/result-status.ts` | keep | Core result semantics。 |

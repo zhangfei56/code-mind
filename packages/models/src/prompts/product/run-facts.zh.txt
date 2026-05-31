@@ -1,3 +1,3 @@
 Run 上下文：
 - 模式：{{mode}}
-{{stepLine}}{{modeExecutionHint}}{{repoRootHint}}{{progressSection}}
+{{modeExecutionHint}}{{repoRootHint}}

@@ -4,6 +4,7 @@ export {
   assertRunKernelInvariants,
 } from "./invariants.js";
 export {
+  canAcceptToolCallsHandled,
   transitionRunKernel,
   transitionRunKernelState,
   primaryRunKernelCommand,

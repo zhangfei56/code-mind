@@ -12,7 +12,7 @@ import type {
   UserTask,
   WorktreeInfo,
 } from "@code-mind/shared";
-import { createId, DEFAULT_MAX_STEPS } from "@code-mind/shared";
+import { createId, DEFAULT_COMPACTION_POLICY, DEFAULT_MAX_STEPS, resolveCompactionPolicyFromEnv } from "@code-mind/shared";
 
 const CONVERSATION_KINDS = new Set<string>([
   "message.user",
@@ -57,18 +57,22 @@ export async function restoreAgentSession(input: {
 
   const events = await loadSessionConversationEvents(workspaceRoot, sessionId);
 
-  const compactFiles = await readdir(input.getCompactDir(sessionId)).catch(() => []);
-  const compactSummaries = await Promise.all(
-    compactFiles
-      .filter((file) => file.endsWith(".md"))
-      .sort()
-      .map((file) => readFile(join(input.getCompactDir(sessionId), file), "utf8")),
-  );
-
-  const { messages, observations } = rebuildConversationFromEvents(events);
-
+  const compactDir = input.getCompactDir(sessionId);
+  const compactFiles = await readdir(compactDir).catch(() => []);
+  const compactMdFiles = compactFiles.filter((file) => file.endsWith(".md")).sort();
+  const compactionCount = compactMdFiles.length;
   const compactionSummary =
-    compactSummaries.length > 0 ? compactSummaries.join("\n\n") : undefined;
+    compactionCount > 0
+      ? await readFile(join(compactDir, compactMdFiles[compactionCount - 1]!), "utf8")
+      : undefined;
+
+  let { messages, observations } = rebuildConversationFromEvents(events);
+
+  if (compactionCount > 0) {
+    const policy = resolveCompactionPolicyFromEnv(DEFAULT_COMPACTION_POLICY);
+    messages = messages.slice(-policy.retainedMessages);
+    observations = observations.slice(-policy.retainedObservations);
+  }
 
   const task: UserTask = {
     id: createId("task"),
@@ -101,9 +105,7 @@ export async function restoreAgentSession(input: {
     metadata: {
       restored: true,
       ...(compactionSummary === undefined ? {} : { compactionSummary }),
-      ...(compactSummaries.length === 0
-        ? {}
-        : { compactionCount: compactSummaries.length }),
+      ...(compactionCount === 0 ? {} : { compactionCount }),
     },
   };
 }

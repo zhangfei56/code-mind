@@ -1,0 +1,22 @@
+[
+  {
+    "id": "product-fix-test-01",
+    "tier": "product",
+    "category": "repair",
+    "productCase": "fix-test-01",
+    "prompt": "",
+    "workspace": "",
+    "goal": "",
+    "tags": ["product", "vague-prompt"]
+  },
+  {
+    "id": "product-fix-test-02",
+    "tier": "product",
+    "category": "repair",
+    "productCase": "fix-test-02",
+    "prompt": "",
+    "workspace": "",
+    "goal": "",
+    "tags": ["product", "vague-prompt", "scope-trap"]
+  }
+]

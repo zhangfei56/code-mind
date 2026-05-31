@@ -194,6 +194,13 @@ export function renderTuiOverlay(state: TuiState, ctx: TuiOverlayContext = {}): 
         filesChanged: state.filesChanged,
         commandsRun: state.commandsRun,
         compactionCount: state.compactionCount,
+        promptMessageCount: state.promptMessageCount,
+        ...(state.lastContextTokens === undefined
+          ? {}
+          : { contextTokens: state.lastContextTokens }),
+        ...(state.maxContextTokens === undefined
+          ? {}
+          : { maxContextTokens: state.maxContextTokens }),
         ...(state.tokenUsage === undefined ? {} : { tokenUsage: state.tokenUsage }),
         activityDetail: state.activityDetail,
         step: state.step,

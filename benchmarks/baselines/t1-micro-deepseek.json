@@ -1,0 +1,202 @@
+{
+  "runId": "t1-micro-1780221943885",
+  "workload": "workloads/t1-micro.json",
+  "model": "deepseek",
+  "gitCommit": "48e5bb9",
+  "maxStepsDefault": 10,
+  "createdAt": "2026-05-31T10:07:12.031Z",
+  "total": 6,
+  "resolved": 6,
+  "resolvedRate": 1,
+  "averageSteps": 4.5,
+  "statusStats": {
+    "success": 5,
+    "failed": 1
+  },
+  "completionStats": {
+    "modified_verified": 4,
+    "verified_only": 1,
+    "diagnosed_only": 1
+  },
+  "failureReasonStats": {},
+  "results": [
+    {
+      "id": "micro-repair-01",
+      "workspace": "examples/ts-bug-demo",
+      "prompt": "修复测试失败。",
+      "goal": "修复 add 函数后测试通过，不依赖 agent 自报 success。",
+      "status": "success",
+      "steps": 5,
+      "summary": "已修复。`src/math.ts` 第 2 行：`a - b` → `a + b`。测试通过。\nVerification: passed.",
+      "sessionId": "session_1f13ce99-fe80-42ba-b6df-c7389275a36b",
+      "runId": "run_d8a3607d-c1aa-4c58-b5d3-0bae70a0db8f",
+      "completion": "modified_verified",
+      "grade": {
+        "passed": true,
+        "score": 1,
+        "checks": [
+          {
+            "id": "verifyCommand",
+            "passed": true,
+            "message": "Command succeeded: node test.js"
+          },
+          {
+            "id": "fileContains:src/math.ts",
+            "passed": true,
+            "message": "Pattern found in src/math.ts"
+          },
+          {
+            "id": "forbiddenCompletion:stopped_by_limit",
+            "passed": true,
+            "message": "Completion is not stopped_by_limit"
+          }
+        ]
+      }
+    },
+    {
+      "id": "micro-repair-02",
+      "workspace": "examples/ts-bug-demo",
+      "prompt": "找出 add 函数为什么错，并修掉。",
+      "goal": "定位、修复、验证闭环。",
+      "status": "success",
+      "steps": 5,
+      "summary": "修复完成。`src/math.ts:2` 把 `a - b` 改成了 `a + b`，测试 `add(1, 2) === 3` 通过。\nVerification: passed.",
+      "sessionId": "session_7957b964-732b-4b27-99c3-e8d5a5a50f70",
+      "runId": "run_02240da8-4fc8-4416-a804-e7c30180492f",
+      "completion": "modified_verified",
+      "grade": {
+        "passed": true,
+        "score": 1,
+        "checks": [
+          {
+            "id": "verifyCommand",
+            "passed": true,
+            "message": "Command succeeded: node test.js"
+          },
+          {
+            "id": "verificationPassed",
+            "passed": true,
+            "message": "verification.json passed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "micro-verify-01",
+      "workspace": "examples/ts-bug-demo",
+      "prompt": "帮我验证这个项目当前是否通过测试。",
+      "goal": "以验证为主，有限 step 内完成。",
+      "status": "success",
+      "steps": 4,
+      "summary": "**测试通过。** ✅\n项目结构很简单：\n- `src/math.ts` — 导出一个 `add(a, b)` 函数\n- `test.js` — 使用 `vm` 模块在沙盒中加载转换后的 TS 源码，验证 `add(1, 2) === 3`\n`npm test` 输出 `tests passed`，一切正常。\nVerification: passed.",
+      "sessionId": "session_d6552112-2de3-4e42-b299-5bd94c643531",
+      "runId": "run_2837a4b1-234c-4f85-9af2-332ac6117b48",
+      "completion": "verified_only",
+      "grade": {
+        "passed": true,
+        "score": 1,
+        "checks": [
+          {
+            "id": "verifyCommand",
+            "passed": true,
+            "message": "Command succeeded: node test.js"
+          },
+          {
+            "id": "maxSteps",
+            "passed": true,
+            "message": "Steps 4 / max 8"
+          },
+          {
+            "id": "requiredEvent:verification.finished",
+            "passed": true,
+            "message": "Found event verification.finished"
+          },
+          {
+            "id": "forbiddenCompletion:stopped_by_limit",
+            "passed": true,
+            "message": "Completion is not stopped_by_limit"
+          }
+        ]
+      }
+    },
+    {
+      "id": "micro-implement-01",
+      "workspace": "examples/ts-bug-demo",
+      "prompt": "给 math.ts 新增 subtract 函数，并验证。",
+      "goal": "小范围实现后测试通过。",
+      "status": "success",
+      "steps": 4,
+      "summary": "已完成。`src/math.ts` 新增了 `subtract` 函数，测试通过：`subtract(5, 2) === 3`。\nVerification: passed.",
+      "sessionId": "session_2a00d46a-a08c-42d8-a25f-e9a235f20ef7",
+      "runId": "run_ca6f0c09-025e-4d56-8f9b-e71b03854930",
+      "completion": "modified_verified",
+      "grade": {
+        "passed": true,
+        "score": 1,
+        "checks": [
+          {
+            "id": "verifyCommand",
+            "passed": true,
+            "message": "Command succeeded: node test.js"
+          },
+          {
+            "id": "fileContains:src/math.ts",
+            "passed": true,
+            "message": "Pattern found in src/math.ts"
+          }
+        ]
+      }
+    },
+    {
+      "id": "micro-analysis-01",
+      "workspace": "examples/ts-bug-demo",
+      "prompt": "请分析这个项目的结构和主要入口。",
+      "goal": "分析类任务应在有限 step 内收敛。",
+      "status": "failed",
+      "steps": 3,
+      "summary": "terminated",
+      "sessionId": "session_1ff5cf53-0bf6-48e1-bbb5-c1f3cb6ba42d",
+      "runId": "run_8fc24da5-4c7c-42c9-b205-0798aa862a17",
+      "completion": "diagnosed_only",
+      "grade": {
+        "passed": true,
+        "score": 1,
+        "checks": [
+          {
+            "id": "maxSteps",
+            "passed": true,
+            "message": "Steps 3 / max 8"
+          },
+          {
+            "id": "forbiddenCompletion:stopped_by_limit",
+            "passed": true,
+            "message": "Completion is not stopped_by_limit"
+          }
+        ]
+      }
+    },
+    {
+      "id": "micro-false-success-trap",
+      "workspace": "examples/ts-bug-demo",
+      "prompt": "测试失败了，帮我看看。",
+      "goal": "grader 必须用测试判据抓住假成功。",
+      "status": "success",
+      "steps": 6,
+      "summary": "修复完成。问题出在 `src/math.ts:2`，`add` 函数体中误写了 `a - b`，改为 `a + b` 后测试通过。\nVerification: passed.",
+      "sessionId": "session_5b2f26c5-21e9-4017-a99e-8db86bb38110",
+      "runId": "run_ddaa1f0f-1bd0-4deb-ba71-9a7649b60214",
+      "completion": "modified_verified",
+      "grade": {
+        "passed": true,
+        "score": 1,
+        "checks": [
+          {
+            "id": "verifyCommand",
+            "passed": true,
+            "message": "Command succeeded: node test.js"
+          }
+        ]
+      }
+    }
+  ]
+}

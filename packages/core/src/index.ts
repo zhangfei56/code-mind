@@ -101,7 +101,12 @@ export {
   updateExplorationEvidence,
 } from "./agent/runtime/exploration-evidence.js";
 export { runAutomaticVerification } from "./agent/runtime/verification.js";
-export { completeRun } from "./agent/runtime/session-lifecycle.js";
+export {
+  runVerifyOnlyAutomaticVerificationIfNeeded,
+  shellLooksLikeVerification,
+  shouldRunVerifyOnlyAutomaticVerification,
+} from "./agent/runtime/verification.js";
+export { completeRun, compactSessionIfNeeded, type SessionLifecycleDeps } from "./agent/runtime/session-lifecycle.js";
 export {
   tryReviewRecoveryBeforeCompletion,
   type ReviewRecoveryOutcome,
@@ -120,9 +125,12 @@ export {
   createPermissionPort,
   createPromptAssemblyPort,
   createToolExecutionPort,
+  createCompactionPort,
+  type CompactionPort,
 } from "./agent/runtime/ports/index.js";
 export {
   assertRunKernelInvariants,
+  canAcceptToolCallsHandled,
   createRunKernelState,
   primaryRunKernelCommand,
   transitionRunKernel,

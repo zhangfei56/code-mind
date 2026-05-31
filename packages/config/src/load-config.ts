@@ -27,6 +27,7 @@ function loadConfigFile(configPath: string): AgentConfig | null {
   const normalized = parsed as Record<string, unknown>;
   const logging = (normalized.logging ?? {}) as Record<string, unknown>;
 
+  const compaction = (normalized.compaction ?? {}) as Record<string, unknown>;
   const candidate = {
     defaultModel: normalized.default_model,
     models: Object.fromEntries(
@@ -46,6 +47,22 @@ function loadConfigFile(configPath: string): AgentConfig | null {
     logging: {
       level: logging.level,
     },
+    ...(Object.keys(compaction).length === 0
+      ? {}
+      : {
+          compaction: {
+            ...(compaction.char_threshold === undefined
+              ? {}
+              : { charThreshold: compaction.char_threshold }),
+            ...(compaction.retained_messages === undefined
+              ? {}
+              : { retainedMessages: compaction.retained_messages }),
+            ...(compaction.retained_observations === undefined
+              ? {}
+              : { retainedObservations: compaction.retained_observations }),
+            ...(compaction.model === undefined ? {} : { model: compaction.model }),
+          },
+        }),
   };
 
   return configSchema.parse(candidate);

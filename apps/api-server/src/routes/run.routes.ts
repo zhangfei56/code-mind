@@ -7,7 +7,7 @@ import {
   createHttpPlanApprovalHandler,
   httpApprovalQueue,
 } from "@code-mind/server-runtime";
-import { composeAgentLoop } from "@code-mind/agent-composition";
+import { composeAgentLoop, buildCompactionRuntimeOverrides } from "@code-mind/agent-composition";
 import {
   createOrchestrationSessionStore,
   createRunEventPublisher,
@@ -96,6 +96,7 @@ async function executeRun(
   const { loop } = await composeAgentLoop(cwd, {
     model: provider,
     profile,
+    runtime: buildCompactionRuntimeOverrides(resolvedModel, config),
     permissionPrompter: httpApprovalQueue.createPrompter(
       (root) => createOrchestrationSessionStore(root),
       cwd,

@@ -542,6 +542,7 @@ export class ProgressPrinter {
       event.kind === "tool.result" ||
       event.kind === "verification.finished" ||
       event.kind === "context.compacted" ||
+      event.kind === "context.compaction_failed" ||
       event.kind === "turn.finished"
     ) {
       const output = this.journal.handleEvent(event);

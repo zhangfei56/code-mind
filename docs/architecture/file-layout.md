@@ -116,6 +116,7 @@ packages/core/src/
         verification-port.ts
         review-port.ts
         session-store-port.ts   纯 SessionStorePort 契约 + structural adapter
+        compaction-port.ts      CompactionPort + createCompactionPort [Phase 1–2]
 ```
 
 packages/agent-composition/src/
@@ -216,7 +217,9 @@ apps/api-server/src/
 packages/context/src/
   context-manager.ts
   system-prompt.ts
-  compaction.ts
+  compaction.ts              # window retain、阈值、applyCompaction [LLM-only]
+  compaction-prompt.ts       # LLM merge 模板（无 HTTP）
+  compaction-locale.ts       # zh/en merge locale
   run-facts-block.ts
   plan-mode-attachment.ts
   subagent-delegation-block.ts

@@ -198,7 +198,10 @@ export const explainRepoScenario: MockScenario = {
         step: 3,
         maxSteps: 12,
         compactionCount: 1,
-        messageCount: 24,
+        messageCount: 8,
+        evictedMessageCount: 2,
+        evictedObservationCount: 1,
+        strategy: "llm",
       },
     }),
     mockAgentEvent(++seqExplain, {

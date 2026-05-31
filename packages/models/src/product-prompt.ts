@@ -66,6 +66,8 @@ export interface ModelEnvironmentPromptOptions {
   cwd: string;
   isGitRepo?: boolean;
   locale?: ProductPromptLocale;
+  /** Stable calendar date for the session (defaults to today if omitted). */
+  referenceDate?: string;
 }
 
 export function getModelEnvironmentPrompt(
@@ -76,6 +78,10 @@ export function getModelEnvironmentPrompt(
     resolveProductPromptLocale(options.modelName, options.providerModel);
   const modelId =
     normalizeModelId(options.modelName, options.providerModel) || options.modelName;
+  const date =
+    options.referenceDate !== undefined && options.referenceDate.length > 0
+      ? options.referenceDate
+      : new Date().toDateString();
   return getProductPrompt("env", locale, {
     modelName: options.modelName,
     modelId,
@@ -83,6 +89,6 @@ export function getModelEnvironmentPrompt(
     workspaceRoot: options.workspaceRoot,
     isGitRepo: options.isGitRepo === true ? "yes" : "no",
     platform: process.platform,
-    date: new Date().toDateString(),
+    date,
   });
 }

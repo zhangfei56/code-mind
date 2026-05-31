@@ -9,6 +9,9 @@ dist-tests/
 # Agent runtime (sessions, patches, worktrees)
 .agent/
 
+# Benchmark caches (cloned SWE-bench repos)
+benchmarks/.cache/
+
 # Secrets and local config
 .env
 .env.*

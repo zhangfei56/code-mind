@@ -28,6 +28,10 @@ function isTerminalEvent(event: RunKernelEvent): boolean {
   return event.type === "run_completed" || event.type === "run_cancelled" || event.type === "run_failed";
 }
 
+export function canAcceptToolCallsHandled(phase: RunKernelPhase): boolean {
+  return phase === "handling_tools" || phase === "executing_tool";
+}
+
 function eventAllowedPhases(event: RunKernelEvent): readonly RunKernelPhase[] | undefined {
   switch (event.type) {
     case "run_started":

@@ -35,6 +35,7 @@ export type EventKind =
   | "verification.started"
   | "verification.finished"
   | "context.compacted"
+  | "context.compaction_failed"
   | "recovery.triggered"
   | "kernel.transition"
   | "hook.executed"

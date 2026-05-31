@@ -67,7 +67,20 @@ SessionStatus        = SessionRuntimeStatus | AgentResultStatus
 | `ModelProvider` | `packages/shared/src/types.ts` | 模型适配器接口：`chat()`、可选 `stream()` / `countTokens()`、`getCapabilities()`。 |
 | `ModelCapabilities` | `packages/shared/src/types.ts` | 工具调用、JSON schema、vision、reasoning、streaming、上下文长度等能力声明。 |
 
-context 的实际实现位于 `packages/context/src/context-manager.ts`，负责组合 system prompt、mode policy、permission summary、run facts、plan attachment、subagent block、compaction summary、项目规则和 memory 注入。
+context 的实际实现位于 `packages/context/src/context-manager.ts`，负责组合 system prompt、mode policy、permission summary、run facts、plan attachment、subagent block、compaction summary、项目规则和 memory 注入。compaction **编排**（何时调模型、Tier 选择、事件）在 `@code-mind/core` `session-lifecycle.ts`，经 `CompactionPort`；context 包只提供纯函数与 prompt 模板，见 [runtime/context-compaction.md](./runtime/context-compaction.md)。
+
+#### Compaction 相关类型
+
+| 模型 | 归属 | 作用 |
+|------|------|------|
+| `CompactionPolicy` | `shared/compaction.ts` | `charThreshold`、`retainedMessages`、`retainedObservations`、`modelName?` |
+| `CompactionSummarizeInput` / `CompactionSummarizeResult` | `shared` | Port 入参/出参；`strategy` 恒为 `"llm"` |
+| `CompactionLedgerRecord` | `shared` | `compaction-ledger.jsonl` 行 |
+| `AgentSession.metadata.compactionSummary` | session metadata | rolling Markdown，resume 后注入 history 之后 |
+| `AgentSession.metadata.compactionCount` | session metadata | 累计 compact 轮数 |
+| `AgentSession.metadata.compactionBlockedContextChars` | session metadata | LLM 失败后同体量跳过 compact |
+| `context.compacted` | agent-event | 成功；`usage`、`durationMs`、evicted 计数 |
+| `context.compaction_failed` | agent-event | LLM 失败；`reason`、`contextChars` |
 
 ### 1.4 工具、权限与审批
 

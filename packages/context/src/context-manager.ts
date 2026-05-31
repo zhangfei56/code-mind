@@ -63,6 +63,11 @@ function wrapUntrustedContent(
   return getProductPrompt("untrusted-wrapper", locale, { source, content });
 }
 
+function formatSessionReferenceDate(session: AgentSession): string {
+  const parsed = new Date(session.createdAt);
+  return Number.isNaN(parsed.getTime()) ? new Date().toDateString() : parsed.toDateString();
+}
+
 export class DefaultContextManager implements ContextManager {
   async build(input: ContextBuildInput): Promise<ContextSnapshot> {
     const { session, task, profile } = input;
@@ -109,6 +114,7 @@ export class DefaultContextManager implements ContextManager {
           cwd: task.cwd,
           isGitRepo: session.metadata?.isGitRepo === true,
           locale,
+          referenceDate: formatSessionReferenceDate(session),
           ...(providerModel === undefined ? {} : { providerModel }),
         }),
         createdAt: nowIso(),
@@ -161,19 +167,6 @@ export class DefaultContextManager implements ContextManager {
             ]
           : [];
       })(),
-      ...(
-        typeof session.metadata?.compactionSummary === "string" &&
-        session.metadata.compactionSummary.length > 0
-          ? [
-              {
-                id: createId("msg"),
-                role: "system" as const,
-                content: `Compacted session summary:\n${session.metadata.compactionSummary}`,
-                createdAt: nowIso(),
-              },
-            ]
-          : []
-      ),
       ...(projectRules.content
         ? [
             {
@@ -203,6 +196,19 @@ export class DefaultContextManager implements ContextManager {
           ]
         : []),
       ...session.messages,
+      ...(
+        typeof session.metadata?.compactionSummary === "string" &&
+        session.metadata.compactionSummary.length > 0
+          ? [
+              {
+                id: createId("msg"),
+                role: "system" as const,
+                content: `Compacted session summary:\n${session.metadata.compactionSummary}`,
+                createdAt: nowIso(),
+              },
+            ]
+          : []
+      ),
     ];
 
     return {

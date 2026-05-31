@@ -33,35 +33,23 @@ export function runRunFactsTests(): void {
   assert.match(staticBlock, /Run 上下文：/);
   assert.match(staticBlock, /- 模式：agent/);
   assert.match(staticBlock, /若已修改代码，在宣告成功前先验证/);
-  assert.doesNotMatch(staticBlock, /已修改文件：/);
+  assert.match(staticBlock, /当前在仓库根目录/);
+  assert.doesNotMatch(staticBlock, /最近活动：|最近工具：|工具计数：|最近验证：/);
 
   const runFacts: RunFactsSnapshot = {
-    mode: "agent",
-    step: 3,
-    maxSteps: 8,
-    closingTurn: false,
-    modifiedFiles: ["src/a.ts", "tests/a.test.ts"],
-    lastTool: { name: "read_file", at: "2026-05-31T00:00:00.000Z" },
-    lastActivity: "reading",
-    toolCounts: { read: 4, search: 1, edit: 2, shell: 1 },
-    lastVerification: {
-      passed: false,
-      summary: "1 test failed",
-      steps: [],
-    },
-    atWorkspaceRoot: true,
+    mode: "plan",
+    atWorkspaceRoot: false,
   };
 
-  const dynamicBlock = buildRunFactsBlock(makeSession(), { locale: "zh", runFacts });
-  assert.match(dynamicBlock, /- 步骤：3 \/ 8/);
-  assert.match(dynamicBlock, /最近活动：阅读/);
-  assert.match(dynamicBlock, /最近工具：read_file/);
-  assert.match(dynamicBlock, /工具计数：read 4，search 1，edit 2，shell 1/);
-  assert.match(dynamicBlock, /已修改文件：src\/a.ts, tests\/a.test.ts/);
-  assert.match(dynamicBlock, /最近验证：失败。1 test failed/);
-  assert.match(dynamicBlock, /当前在仓库根目录/);
+  const planBlock = buildRunFactsBlock(
+    makeSession({ task: { ...makeSession().task, mode: "agent", cwd: "/tmp/ws/src" } }),
+    { locale: "zh", runFacts },
+  );
+  assert.match(planBlock, /- 模式：plan/);
+  assert.match(planBlock, /不要修改源码/);
+  assert.doesNotMatch(planBlock, /当前在仓库根目录/);
 
-  const enBlock = buildRunFactsBlock(makeSession(), { locale: "en", runFacts });
+  const enBlock = buildRunFactsBlock(makeSession(), { locale: "en", runFacts: { mode: "agent", atWorkspaceRoot: true } });
   assert.match(enBlock, /Run context:/);
-  assert.match(enBlock, /Modified files: src\/a.ts, tests\/a.test.ts/);
+  assert.match(enBlock, /Operating from repository root/);
 }

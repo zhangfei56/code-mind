@@ -20,6 +20,7 @@ architecture/runtime/
   README.md                  主流程图
   capability-selection.md    skill/plugin 选择与启用
   prompt-assembly.md         prompt / context / tool schema 拼接
+  context-compaction.md      LLM 增量摘要 + window retain + cache 对齐
   tool-loop.md               模型响应、工具授权、执行和 observation 回写
   completion.md              verification、recovery、finalize 和结束
   state-persistence.md       checkpoint、resume、fork、pending writes
@@ -69,8 +70,9 @@ flowchart TD
   HI --> A
   HITL -- no --> X[执行工具]
   X --> O[保存 observation<br/>更新 runState / events / artifacts]
-  O --> K4[Run Kernel<br/>tool_calls_handled]
-  K4 --> V
+  O --> CMP[Context compaction<br/>阈值触发]
+  CMP --> K4[Run Kernel<br/>tool_calls_handled]
+  K4 --> V{继续下一步?}
   V -- yes --> K0
   V -- no --> F
   F --> K5[Run Kernel<br/>run_completed / cancelled / failed]
@@ -90,6 +92,7 @@ flowchart TD
   click HI "human-in-the-loop.md" "Human-in-the-loop"
   click X "tool-loop.md" "工具授权与执行"
   click O "tool-loop.md" "Observation 回写"
+  click CMP "context-compaction.md" "Context compaction"
   click H "delegation.md" "Delegation"
   click F "completion.md" "结束与 finalize"
 ```
@@ -108,6 +111,7 @@ flowchart TD
 | Human-in-the-loop | [human-in-the-loop.md](./human-in-the-loop.md) | approval、clarification、interrupt/resume、用户编辑状态。 |
 | Delegation / Subagent | [delegation.md](./delegation.md) | handoff、subagent、agent-as-tool、结果合并。 |
 | Observation 回写 | [tool-loop.md](./tool-loop.md) | 工具结果如何进入 session、runState、下一轮上下文。 |
+| Context compaction | [context-compaction.md](./context-compaction.md) | LLM-only 增量摘要 + window retain + 失败 event；summary 在 history 之后。 |
 | 结束与 finalize | [completion.md](./completion.md) | verification、review、recovery、closing turn、effectiveStatus。 |
 | MCP 集成 | [mcp-integration.md](./mcp-integration.md) | MCP tools/resources/prompts/roots/elicitation/sampling 如何映射到 runtime。 |
 | Observability | [observability.md](./observability.md) | tracing、events、token/cost、redaction、replay、eval hooks。 |

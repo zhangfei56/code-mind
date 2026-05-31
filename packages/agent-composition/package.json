@@ -16,8 +16,10 @@
   },
   "dependencies": {
     "@code-mind/capabilities": "workspace:*",
+    "@code-mind/config": "workspace:*",
     "@code-mind/core": "workspace:*",
     "@code-mind/execution": "workspace:*",
+    "@code-mind/models": "workspace:*",
     "@code-mind/shared": "workspace:*"
   }
 }
