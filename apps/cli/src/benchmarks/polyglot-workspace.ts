@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { BenchmarkCase, PolyglotRef } from "./benchmark-types.js";
 import { createIsolatedWorkspace } from "./benchmark-workspace.js";
@@ -9,19 +9,35 @@ export function polyglotExerciseDir(root: string, ref: PolyglotRef): string {
   return join(root, POLYGLOT_ROOT, ref.language, "exercises", "practice", ref.exercise);
 }
 
-export async function readPolyglotInstructions(
-  root: string,
-  ref: PolyglotRef,
-): Promise<string> {
-  const instructionsPath = join(polyglotExerciseDir(root, ref), ".docs", "instructions.md");
-  const raw = await readFile(instructionsPath, "utf8");
-  const body = raw.replace(/^#\s+Instructions\s*\n+/i, "").trim();
+export function formatPolyglotPrompt(ref: PolyglotRef, rawInstructions: string): string {
+  const body = rawInstructions.replace(/^#\s+Instructions\s*\n+/i, "").trim();
   return [
     `Implement the ${ref.exercise} exercise (${ref.language}).`,
     "Edit the main source file in this workspace so all tests pass.",
     "",
     body,
   ].join("\n");
+}
+
+export async function isPolyglotExerciseAvailable(
+  root: string,
+  ref: PolyglotRef,
+): Promise<boolean> {
+  try {
+    await access(join(polyglotExerciseDir(root, ref), ".docs", "instructions.md"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function readPolyglotInstructions(
+  root: string,
+  ref: PolyglotRef,
+): Promise<string> {
+  const instructionsPath = join(polyglotExerciseDir(root, ref), ".docs", "instructions.md");
+  const raw = await readFile(instructionsPath, "utf8");
+  return formatPolyglotPrompt(ref, raw);
 }
 
 function defaultPolyglotVerifyCommand(ref: PolyglotRef): string {

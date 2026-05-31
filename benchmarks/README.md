@@ -37,7 +37,11 @@ Requires a configured model (see [docs/user-guide.md](../docs/user-guide.md)).
 
 ## Polyglot (Aider standard)
 
-Vendor exercises live at `vendor/polyglot-benchmark/` (from [Aider-AI/polyglot-benchmark](https://github.com/Aider-AI/polyglot-benchmark)).
+Vendor exercises live at `vendor/polyglot-benchmark/` (from [Aider-AI/polyglot-benchmark](https://github.com/Aider-AI/polyglot-benchmark)). This directory is **not** committed to git; clone or sparse-checkout it locally before running polyglot evals:
+
+```bash
+git clone --depth 1 https://github.com/Aider-AI/polyglot-benchmark.git benchmarks/vendor/polyglot-benchmark
+```
 
 Each case copies an isolated exercise workspace, loads `.docs/instructions.md`, and grades with language-specific test commands (`pytest` / `npm test`).
 

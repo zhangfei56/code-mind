@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import { loadWorkloadCases } from "../../apps/cli/src/benchmarks/load-workload.js";
 import {
+  formatPolyglotPrompt,
+  isPolyglotExerciseAvailable,
   polyglotExerciseDir,
   readPolyglotInstructions,
 } from "../../apps/cli/src/benchmarks/polyglot-workspace.js";
@@ -26,10 +28,20 @@ export async function runBenchmarkWorkloadTests(): Promise<void> {
 
   const beerSong = polyglot.find((item) => item.id === "polyglot-py-beer-song");
   assert.ok(beerSong?.polyglot);
-  const exerciseDir = polyglotExerciseDir(root, beerSong!.polyglot!);
-  assert.match(exerciseDir, /python\/exercises\/practice\/beer-song$/);
+  const beerSongRef = beerSong.polyglot;
+  assert.match(polyglotExerciseDir(root, beerSongRef), /python\/exercises\/practice\/beer-song$/);
 
-  const instructions = await readPolyglotInstructions(root, beerSong!.polyglot!);
-  assert.match(instructions, /beer-song/i);
-  assert.match(instructions, /Implement the beer-song exercise/);
+  const formatted = formatPolyglotPrompt(
+    beerSongRef,
+    "# Instructions\n\nRecite the lyrics to beer-song.",
+  );
+  assert.match(formatted, /beer-song/i);
+  assert.match(formatted, /Implement the beer-song exercise/);
+  assert.match(formatted, /Recite the lyrics to beer-song/);
+
+  if (await isPolyglotExerciseAvailable(root, beerSongRef)) {
+    const instructions = await readPolyglotInstructions(root, beerSongRef);
+    assert.match(instructions, /beer-song/i);
+    assert.match(instructions, /Implement the beer-song exercise/);
+  }
 }
