@@ -10,7 +10,7 @@ import type {
 } from "@code-mind/shared";
 import { activityLabel } from "@code-mind/shared";
 import { toolPayloadToFinishedLike } from "../ui/agent-output/tool-blocks.js";
-import { formatDuration } from "../ui/format.js";
+import { formatContextUsage, formatDuration } from "../ui/format.js";
 import { describeToolIntent } from "../ui/agent-output/tool-intent.js";
 import { shortPath } from "../ui/theme.js";
 
@@ -289,6 +289,12 @@ export function applyTuiEvent(state: TuiState, event: AgentEvent): void {
       if (typeof p.messageCount === "number") {
         state.promptMessageCount = p.messageCount;
       }
+      if (typeof p.contextTokens === "number") {
+        state.lastContextTokens = p.contextTokens;
+      }
+      if (typeof p.maxContextTokens === "number") {
+        state.maxContextTokens = p.maxContextTokens;
+      }
       break;
     case "model.content.delta": {
       const delta = typeof p.delta === "string" ? p.delta : "";
@@ -420,6 +426,12 @@ export function applyTuiEvent(state: TuiState, event: AgentEvent): void {
       if (p.tokenUsage && typeof p.tokenUsage === "object") {
         state.tokenUsage = p.tokenUsage as TokenUsage;
       }
+      if (typeof p.contextTokens === "number") {
+        state.lastContextTokens = p.contextTokens;
+      }
+      if (typeof p.maxContextTokens === "number") {
+        state.maxContextTokens = p.maxContextTokens;
+      }
       state.toast = `Turn ${state.status}.`;
       break;
     default:
@@ -466,13 +478,17 @@ export function statusLine(state: TuiState): string {
   const elapsed = state.phaseStartedAtMs
     ? ` {gray-fg}${formatElapsed(Date.now() - state.phaseStartedAtMs)}{/gray-fg}`
     : "";
+  const ctx =
+    state.lastContextTokens === undefined
+      ? ""
+      : ` {gray-fg}ctx ${formatContextUsage(state.lastContextTokens, state.maxContextTokens)}{/gray-fg}`;
   return [
     "{cyan-fg}{bold}code-mind{/bold}{/cyan-fg}",
     `{gray-fg}|{/gray-fg} {green-fg}${state.mode}{/green-fg}`,
     `{gray-fg}|{/gray-fg} {green-fg}${state.model}{/green-fg}`,
     `{gray-fg}|{/gray-fg} {gray-fg}${git}{/gray-fg}`,
     `{gray-fg}|{/gray-fg} {blue-fg}${step}{/blue-fg}`,
-    `{gray-fg}|{/gray-fg} ${running}${elapsed}${verbose}`,
+    `{gray-fg}|{/gray-fg} ${running}${elapsed}${ctx}${verbose}`,
   ].join(" ");
 }
 

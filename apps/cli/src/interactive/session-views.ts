@@ -202,6 +202,16 @@ export function applyInteractiveActivity(state: InteractiveState, event: AgentEv
       if (typeof messageCount === "number") {
         state.promptMessageCount = messageCount;
       }
+      const payload = event.payload as {
+        contextTokens?: number;
+        maxContextTokens?: number;
+      };
+      if (typeof payload.contextTokens === "number") {
+        state.contextTokens = payload.contextTokens;
+      }
+      if (typeof payload.maxContextTokens === "number") {
+        state.maxContextTokens = payload.maxContextTokens;
+      }
       break;
     }
     case "model.response": {
@@ -224,6 +234,12 @@ export function applyInteractiveActivity(state: InteractiveState, event: AgentEv
     case "turn.finished":
       if (event.payload.tokenUsage) {
         state.tokenUsage = event.payload.tokenUsage as TokenUsage;
+      }
+      if (typeof event.payload.contextTokens === "number") {
+        state.contextTokens = event.payload.contextTokens;
+      }
+      if (typeof event.payload.maxContextTokens === "number") {
+        state.maxContextTokens = event.payload.maxContextTokens;
       }
       break;
     default:

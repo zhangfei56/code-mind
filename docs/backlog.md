@@ -14,9 +14,9 @@
 
 | ID | 状态 | 任务 | 验收 |
 |----|------|------|------|
-| CLI-01 | [~] | `contextTokens` / `maxContextTokens` 稳定 emit | status bar / footer |
-| CLI-02 | [~] | `tokenUsage` 累计写入 turn 事件 | `/cost`、L3 trace |
-| CLI-03 | [~] | `modifiedFiles` 计数 footer | edit 结束 stderr |
+| CLI-01 | [x] | `contextTokens` / `maxContextTokens` 稳定 emit | status bar / footer |
+| CLI-02 | [x] | `tokenUsage` 累计写入 turn 事件 | `/cost`、L3 trace |
+| CLI-03 | [x] | `modifiedFiles` 计数 footer | edit 结束 stderr |
 
 ## P2 — 工具与 Core
 

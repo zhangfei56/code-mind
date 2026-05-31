@@ -4,6 +4,7 @@ import type {
   AgentSession,
   RuntimeInput,
   ToolCall,
+  InternalMessage,
 } from "@code-mind/shared";
 import { createId, nowIso } from "@code-mind/shared";
 import type { ToolRegistry } from "@code-mind/execution";
@@ -28,6 +29,20 @@ import {
 } from "./agent-events.js";
 import { buildStepAssembly, type StepAssembly } from "./model-step-assembly.js";
 import { resolveTerminalText } from "./model-step-completion.js";
+
+function estimatePromptTokens(messages: InternalMessage[]): number {
+  let chars = 0;
+  for (const message of messages) {
+    chars += message.content.length;
+    if (message.reasoningContent?.length) {
+      chars += message.reasoningContent.length;
+    }
+    if (message.toolCalls?.length) {
+      chars += JSON.stringify(message.toolCalls).length;
+    }
+  }
+  return Math.max(1, Math.ceil(chars / 4));
+}
 
 export type ModelStepOutcome =
   | { type: "terminal"; result: AgentResult }
@@ -94,6 +109,9 @@ export async function executeModelStep(
   const maxSteps = getEffectiveMaxSteps(runState);
   const modelPort = deps.getModelPort(input.model);
   const supportsStreaming = typeof input.model.stream === "function";
+  const maxContextTokens = input.model.getCapabilities().maxContextTokens;
+  const estimatedContextTokens = estimatePromptTokens(summaryMessages);
+  runState.progress.lastMaxContextTokens = maxContextTokens;
 
   const promptTransition = await applyRunKernelEventAndCheckpoint(
     session,
@@ -110,6 +128,8 @@ export async function executeModelStep(
         modelRequestEvent(stepNumber, maxSteps, summaryMessages.length, {
           ...(supportsStreaming ? { streaming: true } : {}),
           ...(streamContent ? { streamContent: true } : {}),
+          contextTokens: estimatedContextTokens,
+          maxContextTokens,
         }),
       );
 
@@ -181,7 +201,7 @@ export async function executeModelStep(
           finishReason: response.finishReason,
           toolCallCount: response.toolCalls.length,
           durationMs: Date.now() - modelStartedAt,
-          maxContextTokens: input.model.getCapabilities().maxContextTokens,
+          maxContextTokens,
           streamed,
           ...(response.text.trim().length === 0
             ? {}
@@ -196,6 +216,11 @@ export async function executeModelStep(
             : { contextTokens: response.usage.inputTokens }),
         }),
       );
+      if (response.usage?.inputTokens !== undefined) {
+        runState.progress.lastContextTokens = response.usage.inputTokens;
+      } else if (estimatedContextTokens > 0) {
+        runState.progress.lastContextTokens = estimatedContextTokens;
+      }
       if (response.usage) {
         addTokenUsage(runState.usage, response.usage);
         await sessionStore.recordModelUsage(session.id, {

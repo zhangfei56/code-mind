@@ -41,6 +41,10 @@ export interface ProgressState {
   toolCounts: ToolActivityCounts;
   lastTool?: { name: string; at: string };
   lastActivity?: import("@code-mind/shared").ActivityKind;
+  /** Last model call prompt size (input tokens) for CLI status/footer. */
+  lastContextTokens?: number;
+  /** Model window size paired with lastContextTokens. */
+  lastMaxContextTokens?: number;
 }
 
 /** Exploration signals gathered from read/list/grep tool calls. */

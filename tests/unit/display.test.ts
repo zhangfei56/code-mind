@@ -11,6 +11,7 @@ import { renderApprovalBlock } from "../../apps/cli/src/ui/agent-output/blocks.j
 import { StepJournalRenderer } from "../../apps/cli/src/ui/agent-output/step-journal.js";
 import { displayWidth } from "../../apps/cli/src/ui/text-wrap.js";
 import { renderAgentEventLine, renderProgressJournalLine } from "../../apps/cli/src/ui/event-lines.js";
+import { renderTurnFinishedLine } from "../../apps/cli/src/ui/result-summary.js";
 import { ProgressPrinter } from "../../apps/cli/src/ui/progress-printer.js";
 import {
   createReplDisplayState,
@@ -874,6 +875,53 @@ export async function runDisplayTests(): Promise<void> {
   const replSafeOutput = replSafeChunks.join("");
   assert.ok(!replSafeOutput.includes("\r"), "REPL suppressInPlace avoids carriage returns");
   assert.ok((replSafeOutput.match(/\n/g) ?? []).length >= 2, "REPL status uses newline output");
+
+  const turnFooter = renderTurnFinishedLine(
+    mockEvent("turn.finished", {
+      status: "success",
+      steps: 5,
+      finalText: "done",
+      mode: "edit",
+      completion: "modified_verified",
+      modifiedFilesCount: 2,
+      tokenUsage: { inputTokens: 45_200, outputTokens: 3_100, totalTokens: 48_300 },
+      contextTokens: 38_000,
+      maxContextTokens: 128_000,
+    }),
+  );
+  assert.match(turnFooter, /✓ 5 steps · success/);
+  assert.match(turnFooter, /2 files changed/);
+  assert.match(turnFooter, /in 45\.2k · out 3\.1k/);
+
+  const replCtxState = createReplDisplayState({
+    mode: "edit",
+    model: "deepseek",
+    cwd: "/tmp/project",
+  });
+  handleReplDisplayEvent(
+    replCtxState,
+    mockEvent("model.request", {
+      step: 2,
+      maxSteps: 8,
+      messageCount: 12,
+      contextTokens: 12_400,
+      maxContextTokens: 128_000,
+    }),
+  );
+  assert.match(renderReplStatusBar(replCtxState), /ctx: 12\.4k\/128\.0k \(10%\)/);
+
+  const tuiCtxState = createTuiState({ cwd: "/tmp/project", model: "deepseek", mode: "edit" });
+  applyTuiEvent(
+    tuiCtxState,
+    mockEvent("model.request", {
+      step: 3,
+      maxSteps: 10,
+      messageCount: 8,
+      contextTokens: 9_500,
+      maxContextTokens: 128_000,
+    }),
+  );
+  assert.match(statusLine(tuiCtxState), /ctx 9\.5k\/128\.0k \(7%\)/);
 
   await runMockDisplayScenarios();
 }

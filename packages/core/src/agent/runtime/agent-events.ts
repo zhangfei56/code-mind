@@ -35,6 +35,8 @@ export function turnFinishedEvent(input: {
   completion: CompletionKind;
   modifiedFilesCount?: number;
   tokenUsage?: TokenUsage;
+  contextTokens?: number;
+  maxContextTokens?: number;
 }): AgentEventInput {
   return {
     kind: "turn.finished",
@@ -93,7 +95,12 @@ export function modelRequestEvent(
   step: number,
   maxSteps: number,
   messageCount: number,
-  options: { streaming?: boolean; streamContent?: boolean } = {},
+  options: {
+    streaming?: boolean;
+    streamContent?: boolean;
+    contextTokens?: number;
+    maxContextTokens?: number;
+  } = {},
 ): AgentEventInput {
   return {
     kind: "model.request",
@@ -104,6 +111,10 @@ export function modelRequestEvent(
       messageCount,
       ...(options.streaming === undefined ? {} : { streaming: options.streaming }),
       ...(options.streamContent === undefined ? {} : { streamContent: options.streamContent }),
+      ...(options.contextTokens === undefined ? {} : { contextTokens: options.contextTokens }),
+      ...(options.maxContextTokens === undefined
+        ? {}
+        : { maxContextTokens: options.maxContextTokens }),
     },
   };
 }

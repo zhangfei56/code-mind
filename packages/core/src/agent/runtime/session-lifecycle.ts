@@ -116,11 +116,23 @@ export async function completeRun(
       mode: session.task.mode,
       completion:
         (result.metadata?.completion as CompletionKind | undefined) ?? "no_progress",
-      ...(Array.isArray(result.metadata?.modifiedFiles)
-        ? { modifiedFilesCount: result.metadata.modifiedFiles.length }
-        : {}),
-      ...(result.metadata?.tokenUsage
-        ? { tokenUsage: result.metadata.tokenUsage as TokenUsage }
+      ...(runState !== undefined
+        ? { modifiedFilesCount: runState.progress.modifiedFiles.size }
+        : Array.isArray(result.metadata?.modifiedFiles)
+          ? { modifiedFilesCount: result.metadata.modifiedFiles.length }
+          : {}),
+      ...(runState !== undefined && runState.usage.totalTokens > 0
+        ? { tokenUsage: { ...runState.usage } }
+        : result.metadata?.tokenUsage
+          ? { tokenUsage: result.metadata.tokenUsage as TokenUsage }
+          : {}),
+      ...(runState?.progress.lastContextTokens !== undefined
+        ? {
+            contextTokens: runState.progress.lastContextTokens,
+            ...(runState.progress.lastMaxContextTokens !== undefined
+              ? { maxContextTokens: runState.progress.lastMaxContextTokens }
+              : {}),
+          }
         : {}),
     }),
   );

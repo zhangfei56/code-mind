@@ -58,6 +58,8 @@ interface StatusState {
   activityDetail?: string;
   modelName: string;
   lastStepIntent?: string;
+  contextTokens?: number;
+  maxContextTokens?: number;
 }
 
 export interface HeaderDetails {
@@ -441,6 +443,12 @@ export class ProgressPrinter {
         this.state.step = step;
         this.state.maxSteps = maxSteps;
         this.streamContentActive = p.streamContent === true;
+        if (typeof p.contextTokens === "number") {
+          this.state.contextTokens = p.contextTokens;
+        }
+        if (typeof p.maxContextTokens === "number") {
+          this.state.maxContextTokens = p.maxContextTokens;
+        }
         break;
       }
       case "model.content.delta": {
@@ -456,6 +464,12 @@ export class ProgressPrinter {
       }
       case "model.response": {
         this.streamContentActive = false;
+        if (typeof p.contextTokens === "number") {
+          this.state.contextTokens = p.contextTokens;
+        }
+        if (typeof p.maxContextTokens === "number") {
+          this.state.maxContextTokens = p.maxContextTokens;
+        }
         if (this.streamedStdoutContent) {
           this.emit("\n", this.contentStream);
         }

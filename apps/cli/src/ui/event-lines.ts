@@ -240,6 +240,12 @@ export function renderAgentEventLine(
       if (options.trace && p.tokenUsage) {
         parts.push(formatTokenUsageSummary(p.tokenUsage as TokenUsage));
       }
+      const contextTokens = num(p, "contextTokens");
+      if (options.trace && contextTokens !== undefined) {
+        parts.push(
+          `ctx ${formatContextUsage(contextTokens, num(p, "maxContextTokens"))}`,
+        );
+      }
       if (options.verbose) {
         parts.push(`${str(p, "mode")} · ${str(p, "completion")}`);
       }

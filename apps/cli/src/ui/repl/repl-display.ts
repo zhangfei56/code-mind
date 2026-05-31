@@ -1,7 +1,7 @@
-import type { AgentEvent, ToolCall } from "@code-mind/shared";
+import type { AgentEvent, ToolCall, TokenUsage } from "@code-mind/shared";
 import { activityLabel } from "@code-mind/shared";
 import type { ActivityKind } from "@code-mind/shared";
-import { formatDuration } from "../format.js";
+import { formatContextUsage, formatDuration, formatTokenUsageSummary } from "../format.js";
 import { formatToolCallLineFromResult } from "../agent-output/tool-call-line.js";
 import { describeToolIntent } from "../agent-output/tool-intent.js";
 import { shortPath, theme } from "../theme.js";
@@ -25,6 +25,10 @@ export interface ReplDisplayState {
   hiddenActivityCount: number;
   isThinking: boolean;
   currentPlanStep: number;
+  contextTokens?: number;
+  maxContextTokens?: number;
+  tokenUsage?: TokenUsage;
+  modifiedFilesCount?: number;
 }
 
 export interface ReplActivityRow {
@@ -139,6 +143,10 @@ export function renderReplStatusBar(state: ReplDisplayState, stream?: NodeJS.Wri
   const step =
     state.maxSteps > 0 ? `step ${state.step}/${state.maxSteps}` : `step ${state.step}`;
   const git = state.gitSummary ? `git: ${state.gitSummary}` : "git: n/a";
+  const ctx =
+    state.contextTokens === undefined
+      ? undefined
+      : formatContextUsage(state.contextTokens, state.maxContextTokens);
   return [
     theme.bold("code-mind", stream),
     theme.dim(`mode: ${state.mode}`, stream),
@@ -146,6 +154,7 @@ export function renderReplStatusBar(state: ReplDisplayState, stream?: NodeJS.Wri
     theme.dim(git, stream),
     theme.dim(`cwd: ${shortPath(state.cwd)}`, stream),
     theme.dim(step, stream),
+    ...(ctx === undefined ? [] : [theme.dim(`ctx: ${ctx}`, stream)]),
     statusGlyph,
     theme.dim(time, stream),
   ].join("  ");
@@ -301,6 +310,12 @@ export function handleReplDisplayEvent(
     case "model.request":
       state.isThinking = true;
       state.sessionStatus = "running";
+      if (typeof p.contextTokens === "number") {
+        state.contextTokens = p.contextTokens;
+      }
+      if (typeof p.maxContextTokens === "number") {
+        state.maxContextTokens = p.maxContextTokens;
+      }
       if (!state.thinkingFocus) {
         state.thinkingFocus = `step ${state.step}/${state.maxSteps || "?"}`;
       }
@@ -309,6 +324,15 @@ export function handleReplDisplayEvent(
       break;
     case "model.response": {
       state.isThinking = false;
+      if (typeof p.contextTokens === "number") {
+        state.contextTokens = p.contextTokens;
+      }
+      if (typeof p.maxContextTokens === "number") {
+        state.maxContextTokens = p.maxContextTokens;
+      }
+      if (p.usage && typeof p.usage === "object") {
+        state.tokenUsage = p.usage as TokenUsage;
+      }
       const toolCallCount = typeof p.toolCallCount === "number" ? p.toolCallCount : 0;
       const textPreview = typeof p.textPreview === "string" ? p.textPreview.trim() : "";
       if (textPreview) {
@@ -357,6 +381,18 @@ export function handleReplDisplayEvent(
       state.sessionStatus = typeof p.status === "string" ? p.status : "idle";
       state.isThinking = false;
       state.step = typeof p.steps === "number" ? p.steps : state.step;
+      if (typeof p.modifiedFilesCount === "number") {
+        state.modifiedFilesCount = p.modifiedFilesCount;
+      }
+      if (p.tokenUsage && typeof p.tokenUsage === "object") {
+        state.tokenUsage = p.tokenUsage as TokenUsage;
+      }
+      if (typeof p.contextTokens === "number") {
+        state.contextTokens = p.contextTokens;
+      }
+      if (typeof p.maxContextTokens === "number") {
+        state.maxContextTokens = p.maxContextTokens;
+      }
       out.statusBar = true;
       break;
     default:

@@ -1,7 +1,7 @@
-import type { AgentResult, AgentEvent, UserTask } from "@code-mind/shared";
+import type { AgentResult, AgentEvent, UserTask, TokenUsage } from "@code-mind/shared";
 import { getEffectiveResultStatus } from "@code-mind/core";
 import type { DisplayLevel } from "./display-level.js";
-import { outcomeGlyph } from "./format.js";
+import { formatContextUsage, formatTokenUsageSummary, outcomeGlyph } from "./format.js";
 import { shortPath, statusColor, theme } from "./theme.js";
 
 export interface ChangeEntry {
@@ -213,6 +213,9 @@ export function renderTurnFinishedLine(event: AgentEvent): string {
   const status = typeof p.status === "string" ? p.status : "unknown";
   const steps = typeof p.steps === "number" ? p.steps : 0;
   const modifiedFilesCount = typeof p.modifiedFilesCount === "number" ? p.modifiedFilesCount : undefined;
+  const tokenUsage = p.tokenUsage as TokenUsage | undefined;
+  const contextTokens = typeof p.contextTokens === "number" ? p.contextTokens : undefined;
+  const maxContextTokens = typeof p.maxContextTokens === "number" ? p.maxContextTokens : undefined;
 
   const glyph = outcomeGlyph(status);
   const parts = [`${glyph} ${steps} step${steps === 1 ? "" : "s"} · ${status}`];
@@ -221,7 +224,12 @@ export function renderTurnFinishedLine(event: AgentEvent): string {
       `${modifiedFilesCount} file${modifiedFilesCount === 1 ? "" : "s"} changed`,
     );
   }
-  return parts.join(", ");
+  if (tokenUsage && tokenUsage.totalTokens > 0) {
+    parts.push(formatTokenUsageSummary(tokenUsage));
+  } else if (contextTokens !== undefined) {
+    parts.push(formatContextUsage(contextTokens, maxContextTokens));
+  }
+  return parts.join(" · ");
 }
 
 export function renderImplementedSection(result: AgentResult): string[] {
