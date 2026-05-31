@@ -12,6 +12,8 @@ export interface DisplayOptions {
   debug?: boolean;
   interactive?: boolean;
   approvalPromptStyle?: ApprovalPromptStyle;
+  /** TTY sessions that prompt for approval — disable stderr \\r redraws. */
+  interactiveTerminal?: boolean;
 }
 
 export function resolveDisplayMode(options: DisplayOptions): DisplayMode {

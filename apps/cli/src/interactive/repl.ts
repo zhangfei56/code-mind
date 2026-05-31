@@ -1,4 +1,4 @@
-import { createInterface } from "node:readline/promises";
+import { createInterface } from "../ui/readline-interface.js";
 import { stdin as input, stdout as output } from "node:process";
 import { resolve } from "node:path";
 import { loadConfigForModel } from "@code-mind/config";
@@ -122,7 +122,15 @@ export async function startInteractiveShell(options: StartInteractiveOptions): P
 
   try {
     while (true) {
-      const answer = await rl.question(buildPrompt(state));
+      if (activeTurnPromise && !approvalManager.hasPendingApprovals()) {
+        await activeTurnPromise;
+        continue;
+      }
+
+      const prompt = approvalManager.hasPendingApprovals()
+        ? buildApprovalPrompt()
+        : buildPrompt(state);
+      const answer = await rl.question(prompt);
       const line = answer.trim();
       if (!line) {
         if (!state.verbose && state.replThinkingExpand) {
@@ -152,11 +160,6 @@ export async function startInteractiveShell(options: StartInteractiveOptions): P
         if (shouldExit) {
           return 0;
         }
-        continue;
-      }
-
-      if (activeTurnPromise) {
-        console.log("A turn is already running. Use /status or /abort.");
         continue;
       }
 
@@ -222,6 +225,10 @@ export async function startInteractiveShell(options: StartInteractiveOptions): P
 
 function buildPrompt(_state: InteractiveState): string {
   return `${theme.dim("›")} `;
+}
+
+function buildApprovalPrompt(): string {
+  return `${theme.yellow("approval")} ${theme.dim("›")} `;
 }
 
 async function runInteractiveCommand(
@@ -387,6 +394,7 @@ async function runInteractiveTurn(
       interactive: !state.verbose,
     }),
     surface: state.verbose ? "run" : "repl",
+    interactiveTerminal: true,
     replContext: {
       mode: state.mode,
       model: state.model ?? provider.name,

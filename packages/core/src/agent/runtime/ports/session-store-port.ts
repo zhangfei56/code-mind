@@ -10,9 +10,8 @@ import type {
   WorktreeInfo,
 } from "@code-mind/shared";
 import type { PersistedRunState, StoredRunState } from "@code-mind/shared";
-import { FileSessionStore } from "@code-mind/session";
 
-/** Core runtime boundary for session persistence (implementation: `@code-mind/session`). */
+/** Core runtime boundary for session persistence; concrete stores live in the session package. */
 export interface SessionStorePort {
   create(task: UserTask, profile: AgentProfile): Promise<AgentSession>;
   restoreSession(sessionId: string, profile: AgentProfile): Promise<AgentSession>;
@@ -38,15 +37,10 @@ export interface SessionStorePort {
   saveApproval(record: ApprovalRecord): Promise<void>;
   listApprovals(sessionId: string): Promise<ApprovalRecord[]>;
   getPendingApprovals(sessionId: string): Promise<ApprovalRecord[]>;
-  /** Session directory for apps orchestration (export/fork); implementation: `@code-mind/session`. */
+  /** Session directory for apps orchestration (export/fork); concrete stores live outside core. */
   getSessionDir(sessionId: string): string;
 }
 
-export function createSessionStorePort(store: FileSessionStore): SessionStorePort {
+export function createSessionStorePort(store: SessionStorePort): SessionStorePort {
   return store;
-}
-
-/** L2 orchestration entry (plan-first, session linking) — not used inside step loop. */
-export function createOrchestrationSessionStore(workspaceRoot: string): SessionStorePort {
-  return createSessionStorePort(new FileSessionStore(workspaceRoot));
 }

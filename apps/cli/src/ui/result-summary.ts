@@ -295,6 +295,24 @@ export function renderNextSection(result: AgentResult, task: UserTask): string[]
   ];
 }
 
+export function renderFollowUpCommands(result: AgentResult): string[] {
+  const changed = readChangeEntries(result).length > 0;
+  const lines = [
+    changed ? "Review changes" : "Inspect",
+    `  code-mind sessions show ${result.sessionId}`,
+  ];
+
+  if (result.runId) {
+    lines.push(`  code-mind runs show ${result.runId}`);
+  }
+
+  if (changed) {
+    lines.push("  git diff", "  git status");
+  }
+
+  return lines;
+}
+
 export function renderPartialSection(result: AgentResult): string[] {
   const status = getEffectiveResultStatus(result);
   if (status === "success" || status === "failed") {

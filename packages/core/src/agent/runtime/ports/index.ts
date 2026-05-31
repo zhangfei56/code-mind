@@ -87,7 +87,7 @@ export function createRunScopedKernelPorts(params: {
   const { staticPorts, session, model, sessionStore, input, publish, finalize } = params;
   return {
     promptAssembly: staticPorts.promptAssemblyFactory(session),
-    model: createModelPort(model),
+    model: staticPorts.modelPortFactory(model),
     permission: staticPorts.permission,
     tools: staticPorts.tools,
     humanApproval: staticPorts.humanApproval,

@@ -2,6 +2,8 @@ import type { AgentResult, AgentEvent, UserTask, ActivityKind, ToolCall } from "
 import { getEffectiveResultStatus } from "@code-mind/core";
 import type { DisplayLevel, DisplayMode, DisplayOptions } from "./display-level.js";
 import { resolveDisplayMode, showsDebugEventStream, showsTraceDetail } from "./display-level.js";
+import { displayWidth, truncateToWidth } from "./text-wrap.js";
+import { colorNarrativeLine, colorThinkingPreview } from "./journal-theme.js";
 import {
   renderApprovalBlock,
   type ApprovalPromptStyle,
@@ -19,6 +21,7 @@ import { renderChangedFiles } from "./render.js";
 import { formatFinalText } from "./final-text.js";
 import {
   buildStructuredRunResult,
+  renderFollowUpCommands,
   renderNextSection,
   renderResultFooterLines,
   renderTurnFinishedLine,
@@ -88,6 +91,8 @@ export interface ProgressPrinterOptions {
   /** stdout target for streamed model content (REPL / final answers). */
   contentStream?: NodeJS.WriteStream;
   approvalPromptStyle?: ApprovalPromptStyle;
+  /** TTY run/REPL with user input — never use \\r / cursor-up redraws on stderr. */
+  interactiveTerminal?: boolean;
 }
 
 function renderErrorGuidance(result: AgentResult): string[] {
@@ -112,15 +117,6 @@ function renderErrorGuidance(result: AgentResult): string[] {
   return lines;
 }
 
-function renderReviewGuidance(result: AgentResult): string[] {
-  return [
-    "Review",
-    `  code-mind sessions show ${result.sessionId}`,
-    "  git diff",
-    "  git status",
-  ];
-}
-
 function usesJournalV3(level: DisplayMode): level is DisplayLevel {
   return typeof level === "number";
 }
@@ -132,9 +128,15 @@ export class ProgressPrinter {
   private streamContentActive = false;
   private streamedStdoutContent = false;
   private paneLineCount = 0;
+  private previewLineActive = false;
+  private previewRowCount = 0;
   private journal: StepJournalRenderer | undefined;
   private replState: ReplDisplayState | undefined;
   private replStatusLineActive = false;
+  /** Blocks \\r in-place preview, pane redraw, and REPL status bar updates. */
+  private inputPaused = false;
+  /** REPL: keep stderr on new lines while readline may be active at the prompt. */
+  private suppressInPlace = false;
   private readonly state: StatusState = {
     step: 0,
     maxSteps: 0,
@@ -160,6 +162,9 @@ export class ProgressPrinter {
         stream: this.stream,
         tty: this.stream.isTTY,
       });
+    }
+    if (options.interactiveTerminal) {
+      this.suppressInPlace = true;
     }
   }
 
@@ -189,6 +194,34 @@ export class ProgressPrinter {
 
   expandLastFoldedStep(): string[] {
     return this.journal?.expandLastFoldedStep() ?? [];
+  }
+
+  /** Finalize in-place stderr output before readline takes the terminal. */
+  pauseForInput(): void {
+    if (this.inputPaused) {
+      return;
+    }
+    this.finalizeInPlaceOutput();
+    this.paneLineCount = 0;
+    this.inputPaused = true;
+  }
+
+  resumeAfterInput(): void {
+    this.inputPaused = false;
+    this.previewLineActive = false;
+    this.previewRowCount = 0;
+    this.replStatusLineActive = false;
+  }
+
+  /** REPL: avoid \\r updates while the › prompt may be accepting input. */
+  setSuppressInPlace(value: boolean): void {
+    if (value === this.suppressInPlace) {
+      return;
+    }
+    if (value) {
+      this.finalizeInPlaceOutput();
+    }
+    this.suppressInPlace = value;
   }
 
   printHeader(
@@ -306,7 +339,7 @@ export class ProgressPrinter {
       lines.push(...errorGuidance);
     }
     lines.push(...renderNextSection(result, task));
-    lines.push(...renderReviewGuidance(result), "");
+    lines.push(...renderFollowUpCommands(result), "");
 
     if (level >= 2) {
       lines.splice(
@@ -450,12 +483,16 @@ export class ProgressPrinter {
         }
         break;
       case "approval.requested":
+        this.pauseForInput();
         this.writeLines(
           renderApprovalBlock(event, this.stream, this.options.approvalPromptStyle ?? "display", {
             ...(this.state.lastStepIntent === undefined ? {} : { stepIntent: this.state.lastStepIntent }),
             toolIntent: describeToolIntent(toolCallFromPayload(p)),
           }),
         );
+        break;
+      case "approval.resolved":
+        this.resumeAfterInput();
         break;
       case "turn.finished":
         if (level <= 1 && !this.usesReplDisplay()) {
@@ -491,6 +528,7 @@ export class ProgressPrinter {
     if (
       event.kind === "model.response" ||
       event.kind === "model.request" ||
+      event.kind === "model.content.delta" ||
       event.kind === "model.reasoning.delta" ||
       event.kind === "step.started" ||
       event.kind === "tool.call" ||
@@ -505,6 +543,16 @@ export class ProgressPrinter {
   }
 
   private applyJournalOutput(output: StepJournalOutput): void {
+    if (output.finalizeLines && output.finalizeLines.length > 0) {
+      this.finalizePreviewWithLines(output.finalizeLines);
+    } else {
+      if (output.clearPreviewLine) {
+        this.clearPreviewLine();
+      }
+      if (output.previewLine && !this.inputPaused) {
+        this.writePreviewLine(output.previewLine);
+      }
+    }
     if (output.lines.length > 0) {
       this.writeLines(output.lines);
       if (output.paneLines && output.paneLines.length > 0) {
@@ -513,20 +561,107 @@ export class ProgressPrinter {
         this.paneLineCount = 0;
       }
     }
-    if (output.redrawPane && output.paneLines && output.paneLines.length > 0) {
+    if (
+      output.redrawPane &&
+      output.paneLines &&
+      output.paneLines.length > 0 &&
+      this.canUseInPlaceUpdates()
+    ) {
       this.redrawPaneInPlace(output.paneLines);
+    } else if (output.redrawPane && output.paneLines && output.paneLines.length > 0) {
+      this.writeLines(output.paneLines);
+      this.paneLineCount = output.paneLines.length;
     }
   }
 
-  private redrawPaneInPlace(lines: string[]): void {
-    if (!this.stream.isTTY) {
+  private canUseInPlaceUpdates(): boolean {
+    return !this.inputPaused && !this.suppressInPlace && this.stream.isTTY;
+  }
+
+  private finalizeInPlaceOutput(): void {
+    this.clearPreviewLine();
+    this.finalizeReplStatusBar();
+  }
+
+  private finalizeReplStatusBar(): void {
+    if (!this.replStatusLineActive || !this.stream.isTTY) {
+      this.replStatusLineActive = false;
       return;
     }
-    if (this.paneLineCount > 0) {
-      this.stream.write(`\x1b[${this.paneLineCount}A`);
+    this.stream.write("\n");
+    this.replStatusLineActive = false;
+  }
+
+  private finalizePreviewWithLines(lines: string[]): void {
+    if (!this.stream.isTTY || !this.canUseInPlaceUpdates()) {
+      this.previewLineActive = false;
+      this.previewRowCount = 0;
+      this.writeLines(lines.map((line) => colorNarrativeLine(line, this.stream)));
+      return;
     }
-    for (const line of lines) {
-      this.stream.write(`\x1b[2K${line}\n`);
+    if (this.previewLineActive) {
+      this.moveToPreviewStart();
+      this.stream.write("\x1b[2K");
+      this.previewLineActive = false;
+      this.previewRowCount = 0;
+    }
+    this.writeLines(lines.map((line) => colorNarrativeLine(line, this.stream)));
+  }
+
+  private clearPreviewLine(): void {
+    if (!this.previewLineActive || !this.stream.isTTY) {
+      return;
+    }
+    this.moveToPreviewStart();
+    this.stream.write("\x1b[2K\n");
+    this.previewLineActive = false;
+    this.previewRowCount = 0;
+  }
+
+  private moveToPreviewStart(): void {
+    for (let index = 0; index < this.previewRowCount - 1; index += 1) {
+      this.stream.write("\x1b[1A");
+    }
+    this.stream.write("\r");
+  }
+
+  private estimatePreviewRows(line: string, columns: number): number {
+    const width = Math.max(1, columns);
+    return Math.max(1, Math.ceil(displayWidth(line) / width));
+  }
+
+  private writePreviewLine(line: string): void {
+    if (!this.canUseInPlaceUpdates()) {
+      return;
+    }
+    const columns = this.stream.columns ?? 80;
+    const fitted = truncateToWidth(line, columns);
+    const colored = colorThinkingPreview(fitted, this.stream);
+
+    if (this.previewLineActive) {
+      this.moveToPreviewStart();
+      this.stream.write("\x1b[2K");
+    }
+
+    this.stream.write(colored);
+    this.previewLineActive = true;
+    this.previewRowCount = this.estimatePreviewRows(fitted, columns);
+  }
+
+  private redrawPaneInPlace(lines: string[]): void {
+    if (!this.canUseInPlaceUpdates()) {
+      return;
+    }
+    const previousLineCount = this.paneLineCount;
+    if (previousLineCount > 0) {
+      this.stream.write(`\x1b[${previousLineCount}A`);
+    }
+    const rowsToWrite = Math.max(previousLineCount, lines.length);
+    for (let index = 0; index < rowsToWrite; index += 1) {
+      this.stream.write(`\x1b[2K${lines[index] ?? ""}\n`);
+    }
+    if (rowsToWrite > lines.length) {
+      this.stream.write(`\x1b[${rowsToWrite - lines.length}A`);
     }
     this.paneLineCount = lines.length;
   }
@@ -550,11 +685,11 @@ export class ProgressPrinter {
       return;
     }
     const line = renderReplStatusBar(this.replState, this.stream);
-    if (this.replStatusLineActive && this.stream.isTTY) {
+    if (this.canUseInPlaceUpdates() && this.replStatusLineActive) {
       this.stream.write(`\r\x1b[2K${line}`);
     } else {
       this.stream.write(`${line}\n`);
-      this.replStatusLineActive = true;
+      this.replStatusLineActive = this.canUseInPlaceUpdates();
     }
   }
 }
@@ -566,5 +701,8 @@ export function createProgressPrinter(options: DisplayOptions = {}): ProgressPri
     ...(options.approvalPromptStyle === undefined
       ? {}
       : { approvalPromptStyle: options.approvalPromptStyle }),
+    ...(options.interactiveTerminal === undefined
+      ? {}
+      : { interactiveTerminal: options.interactiveTerminal }),
   });
 }

@@ -13,6 +13,13 @@ export function runFinalTextTests(): void {
   );
   assert.match(formattedHeading, /^Repo Overview\n\nThis is a local-first agent\./);
 
+  const headingWithLeadIn = formatFinalText(
+    "结论：## code-mind 项目概述\n\n这是一个 local-first code agent。",
+    { level: 0 },
+  );
+  assert.match(headingWithLeadIn, /^code-mind 项目概述\n\n这是一个 local-first/);
+  assert.doesNotMatch(headingWithLeadIn, /结论：##/);
+
   const formattedList = formatFinalText(
     "## Tasks\n\n- inspect the repo\n- explain the runtime",
     { level: 1 },

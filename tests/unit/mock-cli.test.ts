@@ -47,6 +47,7 @@ export async function runMockCliTests(): Promise<void> {
     assert.match(stderr, /list_dir\s+\./);
     assert.match(stderr, /read_file\s+README\.md/);
     assert.match(stderr, /read_file\s+docs\/cli-guide\.md/);
+    assert.doesNotMatch(stderr, /0 tools/);
     assert.match(stdout, /code-mind 项目概述/);
     assert.doesNotMatch(stdout, /## code-mind 项目概述/);
     assert.doesNotMatch(stdout, /session_mock/);

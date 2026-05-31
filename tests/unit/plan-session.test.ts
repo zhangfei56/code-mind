@@ -2,7 +2,13 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createAgentLoopController, runAgentSession, executeFromApprovedPlan } from "@code-mind/core";
+import {
+  createAgentLoopController,
+  executeFromApprovedPlan,
+  getEffectiveResultStatus,
+  isAgentRunSuccessful,
+  runAgentSession,
+} from "@code-mind/core";
 import { createTestSessionStore } from "./helpers/session-store.js";
 import type {
   AgentProfile,
@@ -82,6 +88,27 @@ export async function runPlanSessionTests(): Promise<void> {
   const planArtifact = await store.readPlan(planned.planResult.sessionId);
   assert.ok(planArtifact);
   assert.match(planArtifact.markdown, /Analyze/);
+
+  const rejectedWorkspace = mkdtempSync(join(tmpdir(), "code-mind-plan-rejected-"));
+  mkdirSync(join(rejectedWorkspace, "src"), { recursive: true });
+  const rejected = await runAgentSession({
+    task: {
+      id: "task_plan_rejected",
+      text: "fix with approval",
+      cwd: rejectedWorkspace,
+      mode: "edit",
+      maxSteps: 6,
+    },
+    profile,
+    model: new CountingProvider(),
+    loop: createAgentLoopController(),
+    workspaceRoot: rejectedWorkspace,
+    planFirst: true,
+    approvePlan: async () => false,
+  });
+  assert.equal(rejected.result.status, "permission_denied");
+  assert.equal(getEffectiveResultStatus(rejected.result), "permission_denied");
+  assert.equal(isAgentRunSuccessful(rejected.result), false);
 
   // Standalone execute from approved plan (plan-only session without auto-execute)
   const planOnlyWorkspace = mkdtempSync(join(tmpdir(), "code-mind-plan-only-"));

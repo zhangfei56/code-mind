@@ -1,4 +1,4 @@
-import { createInterface } from "node:readline/promises";
+import { createInterface } from "./readline-interface.js";
 import { stdin as input, stdout as output } from "node:process";
 import type { AgentProfile } from "@code-mind/shared";
 
@@ -100,6 +100,7 @@ export async function promptApprovalDecision(): Promise<ApprovalChoice> {
     return "deny";
   }
 
+  process.stdout.write("\n");
   const rl = createInterface({ input, output });
   try {
     while (true) {

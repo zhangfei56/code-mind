@@ -7,7 +7,9 @@ import {
   formatToolCallLine,
   formatToolCallLineFromResult,
 } from "../../apps/cli/src/ui/agent-output/tool-call-line.js";
+import { renderApprovalBlock } from "../../apps/cli/src/ui/agent-output/blocks.js";
 import { StepJournalRenderer } from "../../apps/cli/src/ui/agent-output/step-journal.js";
+import { displayWidth } from "../../apps/cli/src/ui/text-wrap.js";
 import { renderAgentEventLine, renderProgressJournalLine } from "../../apps/cli/src/ui/event-lines.js";
 import { ProgressPrinter } from "../../apps/cli/src/ui/progress-printer.js";
 import {
@@ -111,6 +113,13 @@ export async function runDisplayTests(): Promise<void> {
   assert.equal(rendered.length, 3);
   assert.match(rendered[2]!, /d\.ts/);
 
+  const compactPane = new ActivityPane({ height: 8, width: 40 });
+  compactPane.appendPendingTool({ id: "one", name: "read_file", arguments: { path: "config.ts" } });
+  const bordered = compactPane.render({ viewport: true, bordered: true });
+  assert.equal(bordered.length, 3);
+  assert.match(bordered[1]!, /read_file/);
+  assert.doesNotMatch(bordered.join("\n"), /^│\s*$/m);
+
   const journal = new StepJournalRenderer({ level: 1, tty: false });
   const seq = [
     mockEvent("step.started", { step: 1, maxSteps: 4 }, 1),
@@ -141,6 +150,159 @@ export async function runDisplayTests(): Promise<void> {
   assert.match(journalText, /我将阅读项目结构/);
   assert.match(journalText, /list_dir/);
   assert.match(journalText, /✓/);
+
+  const reasoningHiddenJournal = new StepJournalRenderer({ level: 1, tty: false });
+  const reasoningHiddenText = [
+    reasoningHiddenJournal.handleEvent(mockEvent("step.started", { step: 1, maxSteps: 4 }, 4)),
+    reasoningHiddenJournal.handleEvent(mockEvent("model.request", { step: 1, maxSteps: 4 }, 5)),
+    reasoningHiddenJournal.handleEvent(mockEvent("model.reasoning.delta", { totalLength: 394 }, 6)),
+    reasoningHiddenJournal.handleEvent(mockEvent("model.response", {
+      step: 1,
+      maxSteps: 4,
+      toolCallCount: 1,
+      plannedToolCalls: [{ id: "t2", name: "read_file", arguments: { path: "tests/unit/config.test.ts" } }],
+    }, 7)),
+  ].flatMap((output) => output.lines).join("\n");
+  assert.doesNotMatch(reasoningHiddenText, /reasoning/);
+  assert.doesNotMatch(reasoningHiddenText, /394 chars/);
+
+  const reasoningTraceJournal = new StepJournalRenderer({ level: 3, tty: false });
+  const reasoningTraceText = [
+    reasoningTraceJournal.handleEvent(mockEvent("step.started", { step: 1, maxSteps: 4 }, 8)),
+    reasoningTraceJournal.handleEvent(mockEvent("model.request", { step: 1, maxSteps: 4 }, 9)),
+    reasoningTraceJournal.handleEvent(mockEvent("model.reasoning.delta", { totalLength: 394 }, 10)),
+    reasoningTraceJournal.handleEvent(mockEvent("model.response", {
+      step: 1,
+      maxSteps: 4,
+      toolCallCount: 1,
+      plannedToolCalls: [{ id: "t3", name: "read_file", arguments: { path: "tests/unit/config.test.ts" } }],
+    }, 11)),
+  ].flatMap((output) => output.lines).join("\n");
+  assert.match(reasoningTraceText, /reasoning/);
+  assert.match(reasoningTraceText, /394 chars/);
+
+  const streamJournal = new StepJournalRenderer({ level: 1, tty: true, paneWidth: 60 });
+  streamJournal.handleEvent(mockEvent("step.started", { step: 1, maxSteps: 4 }, 20));
+  streamJournal.handleEvent(mockEvent("model.request", { step: 1, maxSteps: 4 }, 21));
+  const streamOut1 = streamJournal.handleEvent(
+    mockEvent("model.content.delta", { step: 1, delta: "我将", totalLength: 2 }, 22),
+  );
+  const streamOut2 = streamJournal.handleEvent(
+    mockEvent("model.content.delta", { step: 1, delta: "阅读项目结构", totalLength: 8 }, 23),
+  );
+  assert.ok(streamOut1.previewLine?.includes("thinking"));
+  assert.match(streamOut1.previewLine ?? "", /我将…/);
+  assert.match(streamOut2.previewLine ?? "", /项目结构/);
+  assert.notEqual(streamOut2.redrawPane, true);
+  assert.doesNotMatch(streamOut2.previewLine ?? "", /^─/);
+  const previewWidth = displayWidth(streamOut2.previewLine ?? "");
+  assert.ok(previewWidth <= 60, `preview too wide: ${previewWidth}`);
+
+  const tailJournal = new StepJournalRenderer({
+    level: 1,
+    tty: true,
+    paneWidth: 80,
+    stream: { columns: 80 } as NodeJS.WriteStream,
+  });
+  tailJournal.handleEvent(mockEvent("step.started", { step: 1, maxSteps: 4 }, 40));
+  tailJournal.handleEvent(mockEvent("model.request", { step: 1, maxSteps: 4 }, 41));
+  const longText =
+    "找到了失败的测试：config 测试在 tests/unit/config.test.ts:34 行，期望 debug 但实际得到 info";
+  const tailOut = tailJournal.handleEvent(
+    mockEvent("model.content.delta", { step: 1, delta: longText, totalLength: longText.length }, 42),
+  );
+  assert.match(tailOut.previewLine ?? "", /^  thinking\s+/);
+  assert.doesNotMatch(tailOut.previewLine ?? "", /找到了失败的测试/);
+
+  const finalizeJournal = new StepJournalRenderer({ level: 1, tty: true, paneWidth: 60 });
+  finalizeJournal.handleEvent(mockEvent("step.started", { step: 1, maxSteps: 4 }, 43));
+  finalizeJournal.handleEvent(mockEvent("model.request", { step: 1, maxSteps: 4 }, 44));
+  finalizeJournal.handleEvent(
+    mockEvent("model.content.delta", { step: 1, delta: "我将阅读项目结构。", totalLength: 9 }, 45),
+  );
+  const finalizeOut = finalizeJournal.handleEvent(
+    mockEvent("model.response", {
+      step: 1,
+      maxSteps: 4,
+      toolCallCount: 1,
+      textPreview: "我将阅读项目结构。",
+      plannedToolCalls: [{ id: "t5", name: "list_dir", arguments: { path: "." } }],
+    }, 46),
+  );
+  assert.ok(finalizeOut.finalizeLines?.some((line) => line.includes("我将阅读项目结构")));
+  assert.equal(finalizeOut.lines.some((line) => line.includes("我将阅读项目结构")), false);
+
+  const reasoningFallbackJournal = new StepJournalRenderer({ level: 1, tty: true, paneWidth: 60 });
+  reasoningFallbackJournal.handleEvent(mockEvent("step.started", { step: 1, maxSteps: 4 }, 24));
+  reasoningFallbackJournal.handleEvent(mockEvent("model.request", { step: 1, maxSteps: 4 }, 25));
+  const reasoningPreviewOut = reasoningFallbackJournal.handleEvent(
+    mockEvent("model.reasoning.delta", { step: 1, delta: "分析失败原因", totalLength: 6 }, 26),
+  );
+  assert.ok(reasoningPreviewOut.previewLine?.includes("分析失败原因"));
+  assert.doesNotMatch(reasoningPreviewOut.previewLine ?? "", /reasoning\s+\(/);
+
+  const wrapJournal = new StepJournalRenderer({ level: 1, tty: false, paneWidth: 40, stream: { columns: 40 } as NodeJS.WriteStream });
+  wrapJournal.handleEvent(mockEvent("step.started", { step: 1, maxSteps: 4 }, 27));
+  const wrapOut = wrapJournal.handleEvent(
+    mockEvent("model.response", {
+      step: 1,
+      maxSteps: 4,
+      toolCallCount: 1,
+      textPreview: "我将阅读整个项目结构并定位失败测试相关的配置加载逻辑。",
+      plannedToolCalls: [{ id: "t4", name: "list_dir", arguments: { path: "." } }],
+    }, 28),
+  );
+  assert.ok(wrapOut.lines.length >= 2);
+  for (const line of wrapOut.lines) {
+    assert.ok(line.length <= 40, `line too long: ${line}`);
+  }
+
+  const skipStreamJournal = new StepJournalRenderer({ level: 1, tty: true, paneWidth: 60 });
+  skipStreamJournal.handleEvent(mockEvent("step.started", { step: 1, maxSteps: 4 }, 29));
+  skipStreamJournal.handleEvent(
+    mockEvent("model.request", { step: 1, maxSteps: 4, streamContent: true }, 30),
+  );
+  const skipOut = skipStreamJournal.handleEvent(
+    mockEvent("model.content.delta", { step: 1, delta: "final answer", totalLength: 12 }, 31),
+  );
+  assert.notEqual(skipOut.redrawPane, true);
+
+  const approvalEvent = mockEvent("approval.requested", {
+    step: 1,
+    maxSteps: 10,
+    approvalId: "approval_wrap",
+    toolCall: {
+      id: "call_wrap",
+      name: "run_shell",
+      arguments: { command: "cd /tmp && pnpm test --filter config --reporter verbose" },
+    },
+    reason: "Command requires explicit approval because it runs shell in workspace.",
+  }, 32);
+  const approvalLines = renderApprovalBlock(approvalEvent, { columns: 36 } as NodeJS.WriteStream);
+  const approvalText = approvalLines.join("\n");
+  const bodyLines = approvalLines.filter(
+    (line) => line.startsWith("  ") && !line.includes("[y]"),
+  );
+  assert.ok(bodyLines.length >= 2);
+  for (const line of bodyLines) {
+    assert.ok(line.length <= 36, `approval body line too long: ${line}`);
+  }
+  assert.match(approvalText, /Reason/);
+
+  const previewPane = new ActivityPane({ width: 48 });
+  previewPane.setThinkingPreview("我将 read package.json 并运行 pnpm test 验证修复");
+  assert.match(previewPane.render({ bordered: true }).join("\n"), /thinking\s+我将 read/);
+
+  const finalPreviewJournal = new StepJournalRenderer({ level: 1, tty: false });
+  const finalPreviewLines = finalPreviewJournal.handleEvent(
+    mockEvent("model.response", {
+      step: 1,
+      maxSteps: 4,
+      toolCallCount: 0,
+      textPreview: "## code-mind 项目概述\n\n这是一个 local-first code agent。",
+    }),
+  ).lines.join("\n");
+  assert.equal(finalPreviewLines, "");
 
   const traceLine = renderAgentEventLine(
     mockEvent("model.response", {
@@ -469,6 +631,143 @@ export async function runDisplayTests(): Promise<void> {
   assert.match(describeSlashCommand("events"), /runtime events/);
   assert.match(renderSlashCommandCompletions("/ap", 1), /approve-always/);
   assert.match(renderSlashCommandCompletions("/ev", 0), /raw recent runtime events/);
+
+  const inputSafeChunks: string[] = [];
+  const inputSafeStream = {
+    isTTY: true,
+    columns: 80,
+    write(chunk: string) {
+      inputSafeChunks.push(chunk);
+      return true;
+    },
+  } as NodeJS.WriteStream;
+  const inputSafePrinter = new ProgressPrinter({ level: 1, stream: inputSafeStream });
+  await inputSafePrinter.onEvent(
+    mockEvent("step.started", { step: 1, maxSteps: 4 }, 40),
+  );
+  await inputSafePrinter.onEvent(
+    mockEvent(
+      "model.reasoning.delta",
+      { step: 1, delta: "thinking about the repo layout", totalLength: 30 },
+      41,
+    ),
+  );
+  assert.ok(inputSafeChunks.join("").includes("\r"), "preview should use in-place updates before pause");
+  inputSafePrinter.pauseForInput();
+  const afterPause = inputSafeChunks.length;
+  await inputSafePrinter.onEvent(
+    mockEvent(
+      "model.reasoning.delta",
+      { step: 1, delta: " more reasoning", totalLength: 45 },
+      42,
+    ),
+  );
+  assert.equal(inputSafeChunks.length, afterPause, "preview updates suppressed while input paused");
+  inputSafePrinter.resumeAfterInput();
+  await inputSafePrinter.onEvent(
+    mockEvent("approval.requested", {
+      step: 1,
+      maxSteps: 4,
+      approvalId: "approval_input_safe",
+      toolCall: { id: "t5", name: "read_file", arguments: { path: "README.md" } },
+      reason: "Needs approval.",
+    }, 43),
+  );
+  const approvalOutput = inputSafeChunks.slice(afterPause).join("");
+  assert.match(approvalOutput, /Approval required/);
+  await inputSafePrinter.onEvent(
+    mockEvent("approval.resolved", {
+      step: 1,
+      approved: true,
+      approvalId: "approval_input_safe",
+      toolCall: { id: "t5", name: "read_file", arguments: { path: "README.md" } },
+    }, 44),
+  );
+  await inputSafePrinter.onEvent(
+    mockEvent(
+      "model.reasoning.delta",
+      { step: 1, delta: "resumed preview", totalLength: 14 },
+      45,
+    ),
+  );
+  assert.ok(
+    inputSafeChunks.slice(-1)[0]?.includes("\r") ?? inputSafeChunks.join("").includes("\r"),
+    "preview resumes after approval.resolved",
+  );
+
+  const interactiveRunChunks: string[] = [];
+  const interactiveRunStream = {
+    isTTY: true,
+    columns: 80,
+    write(chunk: string) {
+      interactiveRunChunks.push(chunk);
+      return true;
+    },
+  } as NodeJS.WriteStream;
+  const interactiveRunPrinter = new ProgressPrinter({
+    level: 1,
+    stream: interactiveRunStream,
+    interactiveTerminal: true,
+  });
+  await interactiveRunPrinter.onEvent(mockEvent("step.started", { step: 1, maxSteps: 4 }, 46));
+  await interactiveRunPrinter.onEvent(
+    mockEvent("model.reasoning.delta", { step: 1, delta: "live thought", totalLength: 10 }, 47),
+  );
+  await interactiveRunPrinter.onEvent(
+    mockEvent("tool.call", {
+      step: 1,
+      toolCall: { id: "t6", name: "run_shell", arguments: { command: "pnpm test" } },
+    }, 48),
+  );
+  await interactiveRunPrinter.onEvent(
+    mockEvent("approval.requested", {
+      step: 1,
+      approvalId: "a1",
+      toolCall: { id: "t6", name: "run_shell", arguments: { command: "pnpm test" } },
+      reason: "shell",
+    }, 49),
+  );
+  await interactiveRunPrinter.onEvent(
+    mockEvent("approval.resolved", { step: 1, approved: false, toolCall: { id: "t6", name: "run_shell", arguments: {} } }, 50),
+  );
+  await interactiveRunPrinter.onEvent(
+    mockEvent("tool.result", {
+      step: 1,
+      success: false,
+      toolCall: { id: "t6", name: "run_shell", arguments: { command: "pnpm test" } },
+    }, 51),
+  );
+  const interactiveRunOutput = interactiveRunChunks.join("");
+  assert.ok(!interactiveRunOutput.includes("\r"), "interactiveTerminal disables carriage returns");
+  assert.ok(!/\x1b\[\d+A/.test(interactiveRunOutput), "interactiveTerminal disables cursor-up redraws");
+  assert.ok(!/\x1b\[2K/.test(interactiveRunOutput), "interactiveTerminal disables in-place line clear");
+
+  const replSafeChunks: string[] = [];
+  const replSafeStream = {
+    isTTY: true,
+    columns: 80,
+    write(chunk: string) {
+      replSafeChunks.push(chunk);
+      return true;
+    },
+  } as NodeJS.WriteStream;
+  const replSafePrinter = new ProgressPrinter({
+    level: 1,
+    surface: "repl",
+    interactiveTerminal: true,
+    replContext: { mode: "edit", model: "deepseek", cwd: "/tmp/project" },
+    stream: replSafeStream,
+  });
+  await replSafePrinter.onEvent(mockEvent("turn.started", { maxSteps: 4, modelName: "deepseek" }, 50));
+  await replSafePrinter.onEvent(
+    mockEvent("activity.updated", { activity: "thinking", detail: "step 1" }, 51),
+  );
+  await replSafePrinter.onEvent(
+    mockEvent("activity.updated", { activity: "reading", detail: "package.json" }, 52),
+  );
+  const replSafeOutput = replSafeChunks.join("");
+  assert.ok(!replSafeOutput.includes("\r"), "REPL suppressInPlace avoids carriage returns");
+  assert.ok((replSafeOutput.match(/\n/g) ?? []).length >= 2, "REPL status uses newline output");
 
   await runMockDisplayScenarios();
 }

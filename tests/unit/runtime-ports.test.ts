@@ -5,7 +5,9 @@ import {
   createModelPort,
   createPermissionPort,
   createPromptAssemblyPort,
+  createRunScopedKernelPorts,
   createRunState,
+  createStaticRuntimePorts,
   createToolExecutionPort,
 } from "@code-mind/core";
 import { ToolRegistry, ToolExecutor, registerDefaultTools } from "@code-mind/execution";
@@ -145,4 +147,97 @@ export async function runRuntimePortsTests(): Promise<void> {
   assert.equal(invokeResult.streamed, true);
   assert.ok(streamedEvents.includes("model.reasoning.delta"));
   assert.ok(streamedEvents.includes("model.content.delta"));
+
+  const staticPorts = createStaticRuntimePorts({
+    permissionEngine: new PermissionEngine(),
+    safetyGuard: new SafetyGuard(),
+    toolExecutor: new ToolExecutor(registry),
+    contextManager: new DefaultContextManager(),
+    verificationPipeline: { run: async () => ({ passed: true, summary: "ok", steps: [] }) } as never,
+    reviewEngine: {
+      review: () => ({
+        passed: true,
+        issues: [],
+        suggestions: [],
+        requiresAnotherIteration: false,
+      }),
+    } as never,
+  });
+  let factoryUsed = false;
+  staticPorts.modelPortFactory = () => {
+    factoryUsed = true;
+    return {
+      call: async () => ({
+        text: "from factory",
+        finishReason: "stop",
+        raw: {},
+        toolCalls: [],
+      }),
+      invoke: async () => ({
+        streamed: false,
+        response: {
+          text: "from factory",
+          finishReason: "stop",
+          raw: {},
+          toolCalls: [],
+        },
+      }),
+    };
+  };
+  const runPorts = createRunScopedKernelPorts({
+    staticPorts,
+    session,
+    model: streamingModel,
+    sessionStore: {
+      create: async () => session,
+      restoreSession: async () => session,
+      updateManifest: async () => ({
+        id: session.id,
+        projectPath: session.workspaceRoot,
+        task: session.task.text,
+        mode: session.task.mode,
+        status: "running",
+        model: session.modelName,
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+      }),
+      readManifest: async () => ({
+        id: session.id,
+        projectPath: session.workspaceRoot,
+        task: session.task.text,
+        mode: session.task.mode,
+        status: "running",
+        model: session.modelName,
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+      }),
+      saveCurrentSummary: async () => {},
+      saveSummary: async () => {},
+      savePlan: async () => {},
+      writeSessionTextFile: async () => {},
+      readPlan: async () => undefined,
+      saveCompactSummary: async () => "compact.md",
+      saveReview: async () => {},
+      saveVerification: async () => {},
+      readVerification: async () => undefined,
+      saveRunState: async () => {},
+      readRunState: async () => undefined,
+      saveWorktree: async () => {},
+      readWorktree: async () => undefined,
+      listSessionManifests: async () => [],
+      saveApproval: async () => {},
+      listApprovals: async () => [],
+      getPendingApprovals: async () => [],
+      getSessionDir: () => process.cwd(),
+    },
+    input: undefined,
+    publish: async () => {},
+    finalize: (result) => result,
+  });
+  const factoryResponse = await runPorts.model.call({
+    messages: [],
+    tools: [],
+  });
+  assert.equal(factoryUsed, true);
+  assert.equal(factoryResponse.text, "from factory");
 }

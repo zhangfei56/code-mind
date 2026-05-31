@@ -166,6 +166,23 @@ export function runOptionsToCliArgs(task: string, options: RunOptions): RunCliAr
   };
 }
 
+export function hasExplicitModeOption(argv: readonly string[]): boolean {
+  return argv.some((value) => value === "--mode" || value.startsWith("--mode="));
+}
+
+export function getModeOverride(
+  options: RunOptions,
+  modeExplicit: boolean,
+): AgentMode | undefined {
+  if (options.auto && options.mode === "edit") {
+    return "agent";
+  }
+  if (!modeExplicit) {
+    return undefined;
+  }
+  return options.mode as AgentMode;
+}
+
 export function coerceRunOptions(options: Record<string, unknown>): RunOptions {
   const session =
     options.session === undefined ? undefined : String(options.session);

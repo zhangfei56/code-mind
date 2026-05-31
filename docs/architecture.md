@@ -11,7 +11,7 @@
 
 ## 1. 数据模型架构
 
-数据模型的事实来源是 `packages/shared/src/`。除 memory provider 等少量插件接口外，跨包共享的 runtime、session、tool、model、permission、event 类型都应优先定义在 `@code-mind/shared`。
+数据模型的事实来源是 `packages/shared/src/`。除 memory provider 等少量插件接口外，跨包共享的 runtime、session、tool、model、permission、event 类型都应优先定义在 `@code-mind/shared`；状态机行为、运行期 adapter 与副作用编排仍归属 `@code-mind/core`。
 
 ### 1.1 核心关系图
 
@@ -122,7 +122,7 @@ context 的实际实现位于 `packages/context/src/context-manager.ts`，负责
 
 ### 1.7 Run Kernel 状态模型
 
-`RunKernelState` 是 agent loop 的核心状态事实，定义在 `packages/core/src/agent/kernel/state.ts`，并随 `RunState` 持久化到 `run-state.json`。它不执行副作用，只表达当前 loop 所处阶段、步数、预算、是否 closing turn、待处理工具数和是否需要 checkpoint。
+`RunKernelState` 是 agent loop 的核心状态事实，持久化形状定义在 `packages/shared/src/run-kernel-state.ts`，并随 `RunState` 持久化到 `run-state.json`；`packages/core/src/agent/kernel/state.ts` 负责 re-export 与构造 helper。它不执行副作用，只表达当前 loop 所处阶段、步数、预算、是否 closing turn、待处理工具数和是否需要 checkpoint。
 
 ```text
 RunState
@@ -140,7 +140,7 @@ Kernel 的输入输出模型：
 
 | 模型 | 文件 | 作用 |
 |------|------|------|
-| `RunKernelState` | `packages/core/src/agent/kernel/state.ts` | loop 阶段（`RunKernelPhase`）：`initializing`、`assembling_prompt`、`calling_model`、`routing_model_response`、`handling_tools`、`awaiting_approval`、`executing_tool`、`verifying`、`recovering`、`finalizing`、`completed`、`cancelled`、`failed`。 |
+| `RunKernelState` | `packages/shared/src/run-kernel-state.ts`（core re-export: `packages/core/src/agent/kernel/state.ts`） | loop 阶段（`RunKernelPhase`）：`initializing`、`assembling_prompt`、`calling_model`、`routing_model_response`、`handling_tools`、`awaiting_approval`、`executing_tool`、`verifying`、`recovering`、`finalizing`、`completed`、`cancelled`、`failed`。 |
 | `RunKernelEvent` | `packages/core/src/agent/kernel/events.ts` | runtime 输入给 kernel 的事实事件：step started、prompt assembled、model response、tool handled、approval requested/resolved、recovery requested、run completed/cancelled/failed。 |
 | `RunKernelCommand` | `packages/core/src/agent/kernel/commands.ts` | kernel 输出给 runtime 的命令：checkpoint、assemble prompt、call model、handle tool calls、complete/finalize。 |
 | `RunKernelTransition` | `packages/core/src/agent/kernel/run-state-machine.ts` | 一次状态转换的结果：next state + commands。 |
@@ -208,7 +208,7 @@ Phase B  Step execution
 ```text
 apps/                         用户入口与运行表面
   cli/                        code-mind CLI、REPL、TUI、命令分发、终端输出
-  api-server/                 HTTP API、SSE stream、approval/session/run routes
+  api-server/                 HTTP API、SSE/WS stream、approval/session/run routes
   ci/                         CI 入口说明
 
 packages/                     可复用 runtime 包
@@ -261,6 +261,7 @@ packages/core/src/
     result-status.ts          termination/effective status 语义
     plan-session-orchestrator.ts
     session-orchestration.ts
+    session-store-factory.ts   L2 FileSessionStore -> SessionStorePort 默认工厂
     kernel/
       state.ts                 RunKernelState / RunKernelPhase
       events.ts                RunKernelEvent
@@ -307,7 +308,7 @@ packages/core/src/
         observation-port.ts
         verification-port.ts
         review-port.ts
-        session-store-port.ts
+        session-store-port.ts   纯 SessionStorePort 契约 + structural adapter
 ```
 
 packages/agent-composition/src/
@@ -315,7 +316,7 @@ packages/agent-composition/src/
 
 Session / verify / capabilities / HTTP 审批的 **public owner** 分别为 `packages/session/`、`packages/verify/`、`packages/capabilities/`、`packages/server-runtime/`（不在 `packages/core` 内）。产品级 loop 组合见 `@code-mind/agent-composition`。
 
-`core` 可以依赖 context/models/execution/security/workspace/observability/capabilities/session/verify/server-runtime，但这些包不应反向依赖 `core`。
+`core` 可以依赖 context/models/execution/security/workspace/observability/capabilities/session/verify 等 runtime owning packages，但 **不得依赖 `server-runtime`**；`server-runtime` 是 HTTP/async 组合层，依赖 `core`。除 `server-runtime` / `agent-composition` 等明确的组合包外，runtime owning packages 不应反向依赖 `core`。
 
 ### 2.3.1 `packages/capabilities` / `session` / `verify` / `server-runtime`
 

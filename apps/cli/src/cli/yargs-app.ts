@@ -7,6 +7,8 @@ import { normalizeArgv } from "./normalize-argv.js";
 import {
   coerceCwd,
   coerceRunOptions,
+  getModeOverride,
+  hasExplicitModeOption,
   runOptionsToCliArgs,
   withCwdOption,
   withRunOptions,
@@ -24,16 +26,21 @@ const VERSION = "0.1.0";
 
 type YargsArgs = Record<string, unknown>;
 
-async function runHandler(task: string, options: YargsArgs): Promise<void> {
+async function runHandler(
+  task: string,
+  options: YargsArgs,
+  argv: readonly string[],
+): Promise<void> {
   const run = coerceRunOptions(options);
-  const modeExplicit = process.argv.includes("--mode");
+  const modeExplicit = hasExplicitModeOption(argv);
   process.exitCode = await executeCliArgs(
     runOptionsToCliArgs(task, { ...run, modeExplicit }),
   );
 }
 
 export function buildCli(argv: string[]) {
-  return yargs(normalizeArgv(argv))
+  const normalizedArgv = normalizeArgv(argv);
+  return yargs(normalizedArgv)
     .scriptName(CLI_BIN_NAME)
     .usage(`Usage: ${CLI_BIN_NAME} [command] [options]`)
     .version(VERSION)
@@ -72,7 +79,7 @@ export function buildCli(argv: string[]) {
       },
     )
     .command(
-      "run <task>",
+      "run [task]",
       "Run a task non-interactively (OpenCode-compatible)",
       (yargsBuilder) =>
         withRunOptions(yargsBuilder)
@@ -94,7 +101,7 @@ export function buildCli(argv: string[]) {
           });
           return;
         }
-        await runHandler(String(options.task ?? ""), options);
+        await runHandler(String(options.task ?? ""), options, normalizedArgv);
       },
     )
     .command(
@@ -152,7 +159,7 @@ export function buildCli(argv: string[]) {
                 });
                 return;
               }
-              const modeExplicit = process.argv.includes("--mode");
+              const modeExplicit = hasExplicitModeOption(normalizedArgv);
               process.exitCode = await executeMockRun({
                 scenarioId: String(options.scenario ?? "explain-repo"),
                 run: runOptionsToCliArgs(String(options.task ?? ""), {
@@ -273,13 +280,14 @@ export function buildCli(argv: string[]) {
               }),
             async (options: YargsArgs) => {
               const run = coerceRunOptions(options);
+              const modeOverride = getModeOverride(run, hasExplicitModeOption(normalizedArgv));
               process.exitCode = await executeCliArgs({
                 command: "sessions",
                 subcommand: "execute",
                 planSessionId: String(options.planSessionId),
                 cwd: run.cwd,
                 maxSteps: run.maxSteps,
-                mode: run.mode as (typeof AGENT_MODES)[number],
+                ...(modeOverride === undefined ? {} : { mode: modeOverride }),
                 ...(run.model === undefined ? {} : { model: run.model }),
               });
             },
@@ -488,13 +496,18 @@ export function buildCli(argv: string[]) {
           .positional("task", { type: "string" }),
       async (options: YargsArgs) => {
         const run = coerceRunOptions(options);
+        const modeExplicit = hasExplicitModeOption(normalizedArgv);
+        const mode = runOptionsToCliArgs(String(options.task ?? ""), {
+          ...run,
+          modeExplicit,
+        }).mode;
         process.exitCode = await executeCliArgs({
           command: "skill",
           subcommand: "run",
           cwd: run.cwd,
           name: String(options.name),
-          mode: run.mode as (typeof AGENT_MODES)[number],
-          modeExplicit: true,
+          mode,
+          modeExplicit,
           ...(options.task === undefined ? {} : { task: String(options.task) }),
           ...(run.model === undefined ? {} : { model: run.model }),
         });

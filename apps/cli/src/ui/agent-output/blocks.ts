@@ -3,6 +3,14 @@ import type { DisplayLevel } from "../display-level.js";
 import { formatContextUsage, formatDuration, formatTokenUsageSummary } from "../format.js";
 import { formatApprovalAction, isHighRiskTool, riskHintForTool } from "./tool-blocks.js";
 import { describeToolIntent } from "./tool-intent.js";
+import { resolveTerminalWidth, wrapPrefixedBlock } from "../text-wrap.js";
+import {
+  colorApprovalBodyLine,
+  colorApprovalLabel,
+  colorFoldLine,
+  colorHeaderValue,
+  colorSectionLabel,
+} from "../journal-theme.js";
 import { shortPath, theme } from "../theme.js";
 
 export interface RunHeaderOptions {
@@ -91,38 +99,38 @@ export function renderRunHeader(options: RunHeaderOptions): string[] {
     "",
   ];
 
-  lines.push("Task");
+  lines.push(colorSectionLabel("Task", stream));
   lines.push(`  ${task}`);
   if (level >= 1) {
     lines.push("");
-    lines.push("Understanding");
-    lines.push(`  ${renderUnderstanding(task, mode)}`);
+    lines.push(colorSectionLabel("Understanding", stream));
+    lines.push(theme.dim(`  ${renderUnderstanding(task, mode)}`, stream));
     if (level >= 2) {
       lines.push("");
-      lines.push("Assumptions");
+      lines.push(colorSectionLabel("Assumptions", stream));
       lines.push(...renderAssumptions(mode));
       const risk = renderRisk(mode);
       if (risk) {
         lines.push("");
-        lines.push("Risk");
+        lines.push(colorSectionLabel("Risk", stream));
         lines.push(`  ${risk}`);
       }
     }
   }
   lines.push("");
-  lines.push("Workspace");
-  lines.push(`  Path: ${shortPath(cwd)}`);
-  lines.push(`  Root: ${shortPath(workspaceRoot ?? cwd)}`);
+  lines.push(colorSectionLabel("Workspace", stream));
+  lines.push(colorHeaderValue("Path", shortPath(cwd), stream));
+  lines.push(colorHeaderValue("Root", shortPath(workspaceRoot ?? cwd), stream));
   if (rootHint) {
-    lines.push(`  Root basis: ${rootHint}`);
+    lines.push(colorHeaderValue("Root basis", rootHint, stream));
   }
   if (gitSummary) {
-    lines.push(`  Git: ${gitSummary}`);
+    lines.push(colorHeaderValue("Git", gitSummary, stream));
   }
 
   if (level >= 1 && detectedLines && detectedLines.length > 0) {
     lines.push("");
-    lines.push("Detected");
+    lines.push(colorSectionLabel("Detected", stream));
     for (const line of (level >= 2 ? detectedLines : detectedLines.slice(0, 3))) {
       lines.push(`  ${line}`);
     }
@@ -130,35 +138,35 @@ export function renderRunHeader(options: RunHeaderOptions): string[] {
 
   if (level >= 1) {
     lines.push("");
-    lines.push("Model");
+    lines.push(colorSectionLabel("Model", stream));
     if (level === 1) {
       lines.push(`  ${configuredModelName ?? modelName ?? "unknown"} · ${mode}`);
     } else {
       if (modelProvider) {
-        lines.push(`  Provider: ${modelProvider}`);
+        lines.push(colorHeaderValue("Provider", modelProvider, stream));
       }
-      lines.push(`  Model: ${configuredModelName ?? modelName ?? "unknown"}`);
-      lines.push(`  Mode: ${mode}`);
+      lines.push(colorHeaderValue("Model", configuredModelName ?? modelName ?? "unknown", stream));
+      lines.push(colorHeaderValue("Mode", mode, stream));
     }
   }
 
   if (level >= 1 && (sandboxMode || approvalMode || networkMode)) {
     lines.push("");
-    lines.push("Security");
+    lines.push(colorSectionLabel("Security", stream));
     if (sandboxMode) {
-      lines.push(`  Sandbox: ${sandboxMode}`);
+      lines.push(colorHeaderValue("Sandbox", sandboxMode, stream));
     }
     if (approvalMode) {
-      lines.push(`  Approval: ${approvalMode}`);
+      lines.push(colorHeaderValue("Approval", approvalMode, stream));
     }
     if (networkMode) {
-      lines.push(`  Network: ${networkMode}`);
+      lines.push(colorHeaderValue("Network", networkMode, stream));
     }
   }
 
   if (level >= 2 && (toolCount !== undefined || mcpServerCount !== undefined)) {
     lines.push("");
-    lines.push("Tools");
+    lines.push(colorSectionLabel("Tools", stream));
     if (toolCount !== undefined) {
       lines.push(`  Available: ${toolCount}`);
     }
@@ -169,7 +177,7 @@ export function renderRunHeader(options: RunHeaderOptions): string[] {
 
   if (level >= 2 && configLines && configLines.length > 0) {
     lines.push("");
-    lines.push("Config");
+    lines.push(colorSectionLabel("Config", stream));
     for (const line of configLines) {
       lines.push(`  ${line}`);
     }
@@ -179,23 +187,9 @@ export function renderRunHeader(options: RunHeaderOptions): string[] {
   return lines;
 }
 
-function wrapIntentText(text: string, maxLine = 100): string[] {
-  const words = text.split(/\s+/).filter(Boolean);
-  if (words.length === 0) {
-    return [];
-  }
-  const lines: string[] = [];
-  let current = words[0]!;
-  for (const word of words.slice(1)) {
-    if (`${current} ${word}`.length <= maxLine) {
-      current = `${current} ${word}`;
-    } else {
-      lines.push(current);
-      current = word;
-    }
-  }
-  lines.push(current);
-  return lines.slice(0, 4);
+function wrapIntentText(text: string, stream?: NodeJS.WriteStream): string[] {
+  const width = resolveTerminalWidth(stream);
+  return wrapPrefixedBlock(text, width, "  ");
 }
 
 function payloadToolCalls(payload: Record<string, unknown>, key: string): ToolCall[] {
@@ -228,9 +222,7 @@ export function renderModelIntentLines(event: AgentEvent, level: DisplayLevel): 
   const preview = typeof p.textPreview === "string" ? p.textPreview.trim() : "";
   if (preview) {
     lines.push("Why");
-    for (const line of wrapIntentText(preview)) {
-      lines.push(`  ${line}`);
-    }
+    lines.push(...wrapIntentText(preview));
   }
 
   const planned = payloadToolCalls(p, "plannedToolCalls");
@@ -290,6 +282,7 @@ export function renderApprovalBlock(
   }
   const reason = typeof p.reason === "string" ? p.reason : "";
   const highRisk = isHighRiskTool(toolCall);
+  const width = resolveTerminalWidth(stream);
   const lines = [
     "",
     theme.yellow(highRisk ? "High-risk approval required" : "Approval required", stream),
@@ -297,26 +290,48 @@ export function renderApprovalBlock(
   ];
 
   if (extras.stepIntent?.trim()) {
-    lines.push("Context", `  ${extras.stepIntent.trim()}`, "");
+    lines.push(colorApprovalLabel("Context", stream), ...wrapPrefixedBlock(extras.stepIntent.trim(), width), "");
   }
 
-  lines.push("Action", ...formatApprovalAction(toolCall), "");
+  lines.push(colorApprovalLabel("Action", stream));
+  for (const actionLine of formatApprovalAction(toolCall)) {
+    const indentMatch = actionLine.match(/^(\s*)/);
+    const indent = indentMatch?.[1] ?? "  ";
+    const content = actionLine.slice(indent.length);
+    const wrapped = wrapPrefixedBlock(content, width, indent);
+    if (content === "Run command:" || content === "Apply patch:" || content.startsWith("Sub-agent")) {
+      lines.push(...wrapped.map((line) => (stream ? theme.dim(line, stream) : line)));
+    } else {
+      lines.push(...wrapped.map((line) => colorApprovalBodyLine(line, stream, { command: true })));
+    }
+  }
+  lines.push("");
 
   if (extras.toolIntent?.trim()) {
-    lines.push("Why this action", `  ${extras.toolIntent.trim()}`, "");
+    lines.push(
+      colorApprovalLabel("Why this action", stream),
+      ...wrapPrefixedBlock(extras.toolIntent.trim(), width),
+      "",
+    );
   }
 
   lines.push(
-    "Reason",
-    `  ${reason}`,
+    colorApprovalLabel("Reason", stream),
+    ...wrapPrefixedBlock(reason, width),
     "",
-    "Risk",
-    `  ${riskHintForTool(toolCall)}`,
+    colorApprovalLabel("Risk", stream),
+    ...wrapPrefixedBlock(riskHintForTool(toolCall), width),
     "",
   );
 
   if (promptStyle === "display") {
     lines.push("Allow?", "  [y] yes, once  [a] always allow  [n] no  [e] explain", "");
+  } else if (promptStyle === "inline") {
+    lines.push(
+      "Allow? (answer at the prompt below)",
+      "  [y] once  [a] always  [n] no  [e] explain",
+      "",
+    );
   } else if (promptStyle === "repl") {
     lines.push(
       "Reply at prompt ›",

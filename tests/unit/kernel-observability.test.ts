@@ -139,6 +139,20 @@ export async function runCoreStabilityAuditTests(): Promise<void> {
   assert.doesNotMatch(coreIndex, /@code-mind\/capabilities/);
   assert.doesNotMatch(coreIndex, /@code-mind\/verify/);
 
+  const sessionStorePort = await readFile(
+    join(root, "packages/core/src/agent/runtime/ports/session-store-port.ts"),
+    "utf8",
+  );
+  assert.doesNotMatch(sessionStorePort, /@code-mind\/session/);
+
+  const corePackage = await readFile(join(root, "packages/core/package.json"), "utf8");
+  assert.doesNotMatch(corePackage, /@code-mind\/server-runtime/);
+  const serverRuntimePackage = await readFile(
+    join(root, "packages/server-runtime/package.json"),
+    "utf8",
+  );
+  assert.match(serverRuntimePackage, /@code-mind\/core/);
+
   const appsCli = await readFile(join(root, "apps/cli/src/commands/sessions.ts"), "utf8");
   assert.doesNotMatch(appsCli, /FileSessionStore/);
   const apiWebUi = await readFile(join(root, "apps/api-server/src/web-ui.ts"), "utf8");

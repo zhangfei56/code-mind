@@ -36,10 +36,10 @@ export {
   type AgentLoopRuntimeWiring,
 } from "./agent/runtime/runtime-wiring.js";
 export {
-  createOrchestrationSessionStore,
   createSessionStorePort,
   type SessionStorePort,
 } from "./agent/runtime/ports/session-store-port.js";
+export { createOrchestrationSessionStore } from "./agent/session-store-factory.js";
 export {
   createDefaultRuntimeDependencies,
   createDefaultToolRegistry,

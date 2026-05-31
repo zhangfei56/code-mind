@@ -9,6 +9,7 @@ import {
   describeCompletionReason,
   readChangeEntries,
   renderChangedFiles,
+  renderFollowUpCommands,
   renderNextSection,
   renderResultFooterLines,
 } from "./result-summary.js";
@@ -36,15 +37,6 @@ function renderErrorGuidance(result: AgentResult): string[] {
   lines.push("  Next: inspect the session summary and rerun with a narrower target if needed.");
   lines.push("");
   return lines;
-}
-
-function renderReviewGuidance(result: AgentResult): string[] {
-  return [
-    "Review",
-    `  code-mind sessions show ${result.sessionId}`,
-    "  git diff",
-    "  git status",
-  ];
 }
 
 import { renderFormattedPlan } from "./plan-format.js";
@@ -91,7 +83,7 @@ export function renderTaskResult(
     lines.push(...errorGuidance);
   }
   lines.push(...renderNextSection(result, task));
-  lines.push(...renderReviewGuidance(result), "");
+  lines.push(...renderFollowUpCommands(result), "");
 
   if (level >= 2) {
     lines.splice(lines.length - 1, 0, hr(), theme.dim(result.sessionId), theme.dim(shortPath(task.cwd)));

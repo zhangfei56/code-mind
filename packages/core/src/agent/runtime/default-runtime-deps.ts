@@ -3,7 +3,7 @@ import { ToolExecutor, ToolRegistry, registerDefaultTools } from "@code-mind/exe
 import { PermissionEngine, SafetyGuard } from "@code-mind/security";
 import { ReviewEngine, VerificationPipeline } from "@code-mind/verify";
 import { registerPlanModeTools } from "./plan-mode-tools.js";
-import { createOrchestrationSessionStore } from "./ports/session-store-port.js";
+import { createOrchestrationSessionStore } from "../session-store-factory.js";
 import type { RuntimeDependencies } from "./types.js";
 
 export function createDefaultToolRegistry(existing?: ToolRegistry): ToolRegistry {

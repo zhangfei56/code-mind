@@ -1,13 +1,16 @@
 import type { AgentEvent, ToolCall } from "@code-mind/shared";
 import type { DisplayLevel } from "../display-level.js";
 import { showsTraceDetail } from "../display-level.js";
-import { theme } from "../theme.js";
+import { resolveTerminalWidth, wrapText, truncateToWidth, displayWidth } from "../text-wrap.js";
+import {
+  colorFoldLine,
+  colorNarrativeLine,
+} from "../journal-theme.js";
 import { describeToolIntent } from "./tool-intent.js";
 import { ActivityPane, DEFAULT_ACTIVITY_PANE_HEIGHT, type ActivityEntry } from "./activity-pane.js";
 import { formatToolCallLine, formatToolCallLineFromResult } from "./tool-call-line.js";
 
 const NARRATIVE_MAX = 200;
-const CONCLUSION_PREFIX = "结论：";
 
 export interface FoldedStep {
   step: number;
@@ -32,6 +35,12 @@ export interface StepJournalOutput {
   paneLines?: string[];
   /** Whether caller should redraw pane in place. */
   redrawPane?: boolean;
+  /** Single-line thinking preview for in-place TTY update (no border). */
+  previewLine?: string;
+  /** Clear the transient preview line before writing permanent output. */
+  clearPreviewLine?: boolean;
+  /** Replace preview with permanent narrative lines (TTY). */
+  finalizeLines?: string[];
 }
 
 function payloadToolCall(payload: Record<string, unknown>): ToolCall | undefined {
@@ -89,9 +98,9 @@ function formatNarrative(text: string): string {
   return truncateNarrative(text);
 }
 
-function formatConclusion(text: string): string {
-  const body = truncateNarrative(text);
-  return body.startsWith(CONCLUSION_PREFIX) ? body : `${CONCLUSION_PREFIX}${body}`;
+function formatNarrativeLines(text: string, stream?: NodeJS.WriteStream): string[] {
+  const width = resolveTerminalWidth(stream);
+  return wrapText(formatNarrative(text), width).map((line) => colorNarrativeLine(line, stream));
 }
 
 function foldLine(step: number, toolCount: number): string {
@@ -107,6 +116,11 @@ export class StepJournalRenderer {
   private currentNarrative: string | undefined;
   private paneCommitted = false;
   private reasoningLength = 0;
+  private contentPreview = "";
+  private reasoningPreview = "";
+  private streamContentActive = false;
+  private previewActive = false;
+  private lastPreviewLine = "";
   private readonly foldedSteps: FoldedStep[] = [];
   private lastShellOutput: string | undefined;
 
@@ -161,51 +175,86 @@ export class StepJournalRenderer {
         this.currentNarrative = undefined;
         this.paneCommitted = false;
         this.reasoningLength = 0;
+        this.contentPreview = "";
+        this.reasoningPreview = "";
+        this.streamContentActive = false;
+        this.previewActive = false;
+        this.lastPreviewLine = "";
         this.pane = this.pane.cloneEmpty();
         break;
       }
       case "model.request":
+        this.streamContentActive = p.streamContent === true;
         this.pane.setThinking(true);
         out.redrawPane = this.tty && this.paneCommitted;
         out.paneLines = this.renderPaneLines();
         break;
-      case "model.reasoning.delta":
+      case "model.content.delta": {
+        if (this.streamContentActive) {
+          break;
+        }
+        const delta = typeof p.delta === "string" ? p.delta : "";
+        if (delta.length === 0) {
+          break;
+        }
+        this.contentPreview = (this.contentPreview + delta).trimStart();
+        this.pane.setThinkingPreview(this.contentPreview);
+        this.emitThinkingPreview(out, this.contentPreview);
+        break;
+      }
+      case "model.reasoning.delta": {
+        const delta = typeof p.delta === "string" ? p.delta : "";
         if (showsTraceDetail(this.level)) {
           this.reasoningLength =
             typeof p.totalLength === "number" ? p.totalLength : this.reasoningLength;
           this.pane.setReasoning(this.reasoningLength);
           out.redrawPane = this.tty && this.paneCommitted;
           out.paneLines = this.renderPaneLines();
-        } else if (typeof p.totalLength === "number") {
-          this.reasoningLength = p.totalLength;
-          this.pane.setReasoning(this.reasoningLength);
-          out.redrawPane = this.tty && this.paneCommitted;
-          out.paneLines = this.renderPaneLines();
+        } else if (delta.length > 0 && this.contentPreview.length === 0) {
+          this.reasoningPreview = (this.reasoningPreview + delta).trim();
+          this.pane.setThinkingPreview(this.reasoningPreview);
+          this.emitThinkingPreview(out, this.reasoningPreview);
         }
         break;
+      }
       case "model.response": {
+        this.streamContentActive = false;
         this.pane.setThinking(false);
         const toolCallCount = typeof p.toolCallCount === "number" ? p.toolCallCount : 0;
         const textPreview = typeof p.textPreview === "string" ? p.textPreview.trim() : "";
 
         if (toolCallCount > 0) {
           const planned = payloadToolCalls(p, "plannedToolCalls");
-          this.currentNarrative =
+          const narrativeSource =
             textPreview.length > 0
-              ? formatNarrative(textPreview)
-              : formatNarrative(synthesizeNarrative(planned));
-          out.lines.push(this.currentNarrative);
+              ? textPreview
+              : this.contentPreview.length > 0
+                ? this.contentPreview
+                : this.reasoningPreview.length > 0
+                  ? this.reasoningPreview
+                  : synthesizeNarrative(planned);
+          this.currentNarrative = formatNarrative(narrativeSource);
+          const narrativeLines = formatNarrativeLines(narrativeSource, this.stream);
+          if (this.previewActive && this.tty) {
+            out.finalizeLines = narrativeLines;
+          } else {
+            out.lines.push(...narrativeLines);
+          }
+          this.contentPreview = "";
+          this.reasoningPreview = "";
+          this.previewActive = false;
+          this.lastPreviewLine = "";
           for (const call of planned) {
             this.pane.appendPendingTool(call);
           }
           this.commitPane(out);
         } else if (textPreview.length > 0) {
+          this.contentPreview = "";
+          this.reasoningPreview = "";
           if (this.pane.entryCount > 0) {
             this.commitPane(out);
             this.foldCurrentPane(out);
           }
-          out.lines.push(formatConclusion(textPreview));
-          out.lines.push("");
         }
         break;
       }
@@ -214,7 +263,7 @@ export class StepJournalRenderer {
         if (call) {
           this.pane.appendPendingTool(call);
           if (!this.paneCommitted && this.currentNarrative) {
-            out.lines.push(this.currentNarrative);
+            out.lines.push(...formatNarrativeLines(this.currentNarrative, this.stream));
             this.currentNarrative = undefined;
           }
           this.commitPane(out);
@@ -291,7 +340,7 @@ export class StepJournalRenderer {
     }
     if (!this.paneCommitted) {
       if (this.currentNarrative) {
-        out.lines.push(this.currentNarrative);
+        out.lines.push(...formatNarrativeLines(this.currentNarrative, this.stream));
         this.currentNarrative = undefined;
       }
       this.commitPane(out);
@@ -306,16 +355,19 @@ export class StepJournalRenderer {
       return;
     }
     const toolCount = this.pane.getEntries().filter((entry) => entry.kind === "tool").length;
-    this.foldedSteps.push({
-      step: this.currentStep,
-      toolCount,
-      ...(this.currentNarrative === undefined ? {} : { narrative: this.currentNarrative }),
-      entries: this.pane.snapshot(),
-    });
-    out.lines.push(theme.dim(foldLine(this.currentStep, toolCount), this.stream));
-    out.lines.push("");
+    if (toolCount > 0) {
+      this.foldedSteps.push({
+        step: this.currentStep,
+        toolCount,
+        ...(this.currentNarrative === undefined ? {} : { narrative: this.currentNarrative }),
+        entries: this.pane.snapshot(),
+      });
+      out.lines.push(colorFoldLine(foldLine(this.currentStep, toolCount), this.stream));
+      out.lines.push("");
+    }
     this.pane.clear();
     this.paneCommitted = false;
+    this.previewActive = false;
     this.currentNarrative = undefined;
   }
 
@@ -336,6 +388,40 @@ export class StepJournalRenderer {
     return this.pane.render({
       viewport: !fullLog && this.tty,
       bordered: this.tty,
+      ...(this.stream === undefined ? {} : { stream: this.stream }),
     });
+  }
+
+  private formatPreviewLine(text: string): string {
+    const columns = resolveTerminalWidth(this.stream);
+    const prefix = `  ${"thinking".padEnd(11)} `;
+    const budget = Math.max(8, columns - displayWidth(prefix));
+    const trimmed = text.trim();
+    if (!trimmed) {
+      return truncateToWidth(`${prefix}…`, columns);
+    }
+    const tailBudget = Math.min(36, budget - 1);
+    let tail = trimmed;
+    while (displayWidth(tail) > tailBudget && tail.length > 0) {
+      tail = tail.slice(1);
+    }
+    if (tail.length === 0) {
+      tail = truncateToWidth(trimmed, tailBudget);
+    }
+    const hint = tail.length < trimmed.length ? `…${tail}` : `${tail}…`;
+    return truncateToWidth(`${prefix}${hint}`, columns);
+  }
+
+  private emitThinkingPreview(out: StepJournalOutput, text: string): void {
+    if (!this.tty) {
+      return;
+    }
+    const line = this.formatPreviewLine(text);
+    if (line === this.lastPreviewLine) {
+      return;
+    }
+    this.lastPreviewLine = line;
+    out.previewLine = line;
+    this.previewActive = true;
   }
 }

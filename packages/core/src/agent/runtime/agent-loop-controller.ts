@@ -1,4 +1,5 @@
 import type { AgentResult, RuntimeInput } from "@code-mind/shared";
+import { logProcess } from "@code-mind/shared";
 import { setSessionStatus } from "./session-status.js";
 import { createLoopPolicy, applyRecommendedMaxSteps } from "../task-strategy.js";
 import type { RunState } from "./run-state.js";
@@ -71,6 +72,47 @@ export class AgentLoopController {
       publish: (eventInput, event) => publish(eventInput, event),
       finalize,
     });
+    const completeAndFinish = async (
+      result: AgentResult,
+      options: { isolateCompletionFailure?: boolean } = {},
+    ): Promise<void> => {
+      try {
+        await completeRun(
+          this.wiring.lifecycle,
+          sessionStore,
+          session,
+          result,
+          normalizedInput,
+          runState,
+          { checkpointPort: runPorts.stateStore },
+        );
+      } catch (completionError) {
+        if (options.isolateCompletionFailure !== true) {
+          throw completionError;
+        }
+        const message =
+          completionError instanceof Error
+            ? completionError.message
+            : "Run completion failed.";
+        logProcess("core.agent-loop", "warn", "Failed to persist terminal run state.", {
+          sessionId: session.id,
+          status: result.status,
+          error: message,
+        });
+        await eventBus.emitProcessLog(
+          "core.agent-loop",
+          "Failed to persist terminal run state.",
+          {
+            sessionId: session.id,
+            status: result.status,
+            error: message,
+          },
+          "warn",
+        );
+      }
+      await eventBus.finish(getEffectiveResultStatus(result));
+      await eventBus.flush();
+    };
 
     try {
       await initializeSession(
@@ -108,17 +150,7 @@ export class AgentLoopController {
         });
         if (early) {
           const result = withRunId(early);
-          await completeRun(
-            this.wiring.lifecycle,
-            sessionStore,
-            session,
-            result,
-            normalizedInput,
-            runState,
-            { checkpointPort: runPorts.stateStore },
-          );
-          await eventBus.finish(getEffectiveResultStatus(result));
-          await eventBus.flush();
+          await completeAndFinish(result);
           return result;
         }
         await eventBus.flush();
@@ -132,17 +164,7 @@ export class AgentLoopController {
         ),
         runState,
       );
-      await completeRun(
-        this.wiring.lifecycle,
-        sessionStore,
-        session,
-        result,
-        normalizedInput,
-        runState,
-        { checkpointPort: runPorts.stateStore },
-      );
-      await eventBus.finish(getEffectiveResultStatus(result));
-      await eventBus.flush();
+      await completeAndFinish(result);
       return result;
     } catch (error) {
       if (isRunAbortedError(error) || normalizedInput.abortSignal?.aborted) {
@@ -154,17 +176,7 @@ export class AgentLoopController {
           ),
           runState,
         );
-        await completeRun(
-          this.wiring.lifecycle,
-          sessionStore,
-          session,
-          result,
-          normalizedInput,
-          runState,
-          { checkpointPort: runPorts.stateStore },
-        );
-        await eventBus.finish(getEffectiveResultStatus(result));
-        await eventBus.flush();
+        await completeAndFinish(result, { isolateCompletionFailure: true });
         return result;
       }
       const message =
@@ -178,17 +190,7 @@ export class AgentLoopController {
         ),
         runState,
       );
-      await completeRun(
-        this.wiring.lifecycle,
-        sessionStore,
-        session,
-        result,
-        normalizedInput,
-        runState,
-        { checkpointPort: runPorts.stateStore },
-      );
-      await eventBus.finish(getEffectiveResultStatus(result));
-      await eventBus.flush();
+      await completeAndFinish(result, { isolateCompletionFailure: true });
       return result;
     } finally {
       for (const unsub of unsubscribers) {

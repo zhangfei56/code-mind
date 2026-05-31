@@ -28,7 +28,8 @@ function assertL0(stderr: string, stdout: string): void {
   assert.match(stderr, /read_file.*README/);
   assert.match(stderr, /read_file.*cli-guide/);
   assert.match(stderr, /先读 README/);
-  assert.match(stderr, /结论：/);
+  assert.doesNotMatch(stderr, /结论：/);
+  assert.doesNotMatch(stderr, /0 tools/);
   assert.doesNotMatch(stderr, /✓ Found package\.json/);
   assert.doesNotMatch(stderr, /model → 1 tool/);
   assert.doesNotMatch(stderr, /tool · list_dir/);

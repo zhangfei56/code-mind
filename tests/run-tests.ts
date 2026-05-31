@@ -34,10 +34,12 @@ import { runModelTests } from "./unit/model.test.js";
 import { runObservabilityTests } from "./unit/observability.test.js";
 import { runObservabilityEventTests } from "./unit/observability-events.test.js";
 import { runLoggerTests } from "./unit/logger.test.js";
+import { runCommonOptionsTests } from "./unit/common-options.test.js";
 import { runParseArgsTests } from "./unit/parse-args.test.js";
 import { runNormalizeArgvTests } from "./unit/normalize-argv.test.js";
 import { runRenderTests } from "./unit/render.test.js";
 import { runFinalTextTests } from "./unit/final-text.test.js";
+import { runTextWrapTests } from "./unit/text-wrap.test.js";
 import { runDisplayTests } from "./unit/display.test.js";
 import { runPlanFormatTests } from "./unit/plan-format.test.js";
 import { runMockCliTests } from "./unit/mock-cli.test.js";
@@ -87,6 +89,7 @@ const tests: TestCase[] = [
   { name: "normalizeArgv", run: runNormalizeArgvTests },
   { name: "render", run: runRenderTests },
   { name: "final text", run: runFinalTextTests },
+  { name: "text wrap", run: runTextWrapTests },
   { name: "display", run: runDisplayTests },
   { name: "plan format", run: runPlanFormatTests },
   { name: "mock cli", run: runMockCliTests },
@@ -107,6 +110,7 @@ const tests: TestCase[] = [
   { name: "type contracts", run: runTypeContractTests },
   { name: "model", run: runModelTests },
   { name: "logger", run: runLoggerTests },
+  { name: "common options", run: runCommonOptionsTests },
   { name: "observability", run: runObservabilityTests },
   { name: "workspace helpers", run: runWorkspaceTests },
   { name: "permission engine", run: runPermissionEngineTests },

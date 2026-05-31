@@ -12,6 +12,7 @@ import type {
   ModelResponse,
   AgentEvent,
 } from "@code-mind/shared";
+import { createTestSessionStore } from "./helpers/session-store.js";
 
 class FakeProvider implements ModelProvider {
   name = "fake";
@@ -212,6 +213,7 @@ export async function runRuntimeTests(): Promise<void> {
   assert.ok(events.some((event) => event.kind === "kernel.transition"));
 
   await runRuntimeCancelStepTests();
+  await runRuntimeFailureFinalizationTests();
 }
 
 class SingleToolProvider implements ModelProvider {
@@ -277,4 +279,58 @@ async function runRuntimeCancelStepTests(): Promise<void> {
 
   assert.equal(result.status, "cancelled");
   assert.equal(result.steps, 2);
+}
+
+class ThrowingProvider implements ModelProvider {
+  name = "throwing";
+
+  async chat(_request: ModelRequest): Promise<ModelResponse> {
+    throw new Error("model exploded");
+  }
+
+  getCapabilities(): ModelCapabilities {
+    return {
+      toolCall: true,
+      parallelToolCall: false,
+      jsonSchema: true,
+      vision: false,
+      reasoning: false,
+      maxContextTokens: 100000,
+      maxOutputTokens: 8000,
+      supportsPromptCache: false,
+      supportsComputerUse: false,
+    };
+  }
+}
+
+async function runRuntimeFailureFinalizationTests(): Promise<void> {
+  const workspace = mkdtempSync(join(tmpdir(), "code-mind-runtime-fail-finalize-"));
+  const baseStore = createTestSessionStore(workspace);
+  const profile: AgentProfile = {
+    id: "default",
+    name: "Default",
+    systemPrompt: "You are a code agent.",
+  };
+  const failingStore = Object.create(baseStore) as typeof baseStore;
+  failingStore.saveSummary = async () => {
+    throw new Error("summary write failed");
+  };
+  const runtime = createAgentLoopController({
+    sessionStoreFactory: () => failingStore,
+  });
+
+  const result = await runtime.run({
+    task: {
+      id: "task_failure_finalize",
+      text: "trigger model failure",
+      cwd: workspace,
+      mode: "ask",
+      maxSteps: 3,
+    },
+    profile,
+    model: new ThrowingProvider(),
+  });
+
+  assert.equal(result.status, "failed");
+  assert.match(result.finalText, /model exploded/);
 }

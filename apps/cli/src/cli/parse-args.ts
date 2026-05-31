@@ -785,13 +785,21 @@ export function parseArgs(argv: string[]): CliArgs {
     if (!name) {
       throw new ValidationError(`Missing skill name. Usage: ${CLI_BIN_NAME} skill run <name> [task]`);
     }
-    const positional = argv.slice(3).filter((value) => !value.startsWith("--"));
+    const positional: string[] = [];
     let model: string | undefined;
     let cwd = process.cwd();
     let mode: AgentMode = DEFAULT_AGENT_MODE;
     let modeExplicit = false;
     for (let index = 3; index < argv.length; index += 1) {
       const value = argv[index];
+      if (value === undefined) {
+        continue;
+      }
+      if (!value.startsWith("--")) {
+        positional.push(value);
+        continue;
+      }
+
       const next = argv[index + 1];
       switch (value) {
         case "--cwd":
@@ -821,6 +829,8 @@ export function parseArgs(argv: string[]): CliArgs {
           modeExplicit = true;
           index += 1;
           break;
+        default:
+          throw new ValidationError(`Unknown argument: ${value}`);
       }
     }
     return {

@@ -16,6 +16,7 @@ export function runRenderTests(): void {
     },
     {
       sessionId: "session_abc123",
+      runId: "run_abc123",
       status: "success",
       finalText: "This is a code agent CLI.",
       steps: 1,
@@ -39,6 +40,7 @@ export function runRenderTests(): void {
     },
     {
       sessionId: "session_abc123",
+      runId: "run_abc123",
       status: "success",
       finalText: "This is a code agent CLI.",
       steps: 1,
@@ -60,6 +62,7 @@ export function runRenderTests(): void {
     },
     {
       sessionId: "session_abc123",
+      runId: "run_abc123",
       status: "success",
       finalText: "This is a code agent CLI.",
       steps: 1,
@@ -70,7 +73,10 @@ export function runRenderTests(): void {
   );
   assert.match(normal, /This is a code agent CLI\./);
   assert.match(normal, /success · 1 step · deepseek/);
+  assert.match(normal, /Inspect/);
   assert.match(normal, /code-mind sessions show session_abc123/);
+  assert.match(normal, /code-mind runs show run_abc123/);
+  assert.doesNotMatch(normal, /git diff/);
   assert.match(normal, /Completed after gathering enough evidence to answer\./);
 
   const header = renderRunHeader({
@@ -105,6 +111,7 @@ export function runRenderTests(): void {
     },
     {
       sessionId: "session_fix123",
+      runId: "run_fix123",
       status: "success",
       finalText: "Fixed the auth bug.",
       steps: 3,
@@ -124,7 +131,8 @@ export function runRenderTests(): void {
   assert.match(detailed, /src\/auth\.ts/);
   assert.match(detailed, /Added test coverage\./);
   assert.match(detailed, /Updated source behavior\./);
-  assert.match(detailed, /Review/);
+  assert.match(detailed, /Review changes/);
+  assert.match(detailed, /code-mind runs show run_fix123/);
   assert.match(detailed, /git diff/);
 
   const tableFormatted = renderTaskResult(

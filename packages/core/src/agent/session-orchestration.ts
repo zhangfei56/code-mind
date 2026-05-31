@@ -7,7 +7,7 @@ import type {
   UserTask,
 } from "@code-mind/shared";
 import { AgentLoopController } from "./runtime/agent-loop-controller.js";
-import { createOrchestrationSessionStore } from "./runtime/ports/session-store-port.js";
+import { createOrchestrationSessionStore } from "./session-store-factory.js";
 
 export function buildExecuteTask(
   baseTask: UserTask,

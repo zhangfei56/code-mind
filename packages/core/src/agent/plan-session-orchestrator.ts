@@ -7,7 +7,7 @@ import type {
   UserTask,
 } from "@code-mind/shared";
 import { ValidationError, createId, nowIso } from "@code-mind/shared";
-import { createOrchestrationSessionStore } from "./runtime/ports/session-store-port.js";
+import { createOrchestrationSessionStore } from "./session-store-factory.js";
 import { AgentLoopController } from "./runtime/agent-loop-controller.js";
 import type { PlanApprovalHandler } from "./plan-approval.js";
 import { isAgentRunSuccessful } from "./result-status.js";
@@ -205,6 +205,7 @@ export async function runPlanFirstSession(
       result: {
         ...planResult,
         status: "permission_denied",
+        effectiveStatus: "permission_denied",
         finalText: `${planResult.finalText}\n\nPlan was not approved.`,
         summary: "Plan requires explicit approval before execution.",
       },

@@ -231,4 +231,27 @@ export function runParseArgsTests(): void {
     maxSteps: 10,
     promptFile: "prompt.md",
   });
+
+  const skillRun = parseArgs([
+    "skill",
+    "run",
+    "review",
+    "检查 diff",
+    "--cwd",
+    ".",
+    "--model",
+    "local:demo",
+    "--mode",
+    "agent",
+  ]);
+  assert.deepEqual(skillRun, {
+    command: "skill",
+    subcommand: "run",
+    cwd: ".",
+    name: "review",
+    task: "检查 diff",
+    model: "local:demo",
+    mode: "agent",
+    modeExplicit: true,
+  });
 }

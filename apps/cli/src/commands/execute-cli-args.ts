@@ -486,7 +486,9 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
     ...(runArgs.verbose ? { verbose: true } : {}),
     ...(runArgs.trace ? { trace: true } : {}),
     ...(runArgs.debug ? { debug: true } : {}),
-    ...(useInteractiveApproval ? { approvalPromptStyle: "inline" as const } : {}),
+    ...(useInteractiveApproval
+      ? { approvalPromptStyle: "inline" as const, interactiveTerminal: true }
+      : {}),
   });
   const task = applyRecommendedMaxSteps(
     {
@@ -561,7 +563,13 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
   const profile = createDefaultProfile(resolved.model ?? provider.name, {
     repoRootFocus: isBroadRepoRootTask(task, task.cwd),
   });
-  const cliPermissionPrompter = useInteractiveApproval ? new CliPermissionPrompter() : undefined;
+  const cliPermissionPrompter = useInteractiveApproval
+    ? new CliPermissionPrompter({
+        onBeforePrompt: () => {
+          printer.pauseForInput();
+        },
+      })
+    : undefined;
   const { loop } = await composeAgentLoop(workspaceRoot, {
     model: provider,
     profile,

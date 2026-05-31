@@ -21,6 +21,13 @@ function normalizeLine(line: string): string {
   return stripControlCharacters(line.replace(/\ufffd+/g, "").trimEnd());
 }
 
+function stripLeadInBeforeHeading(text: string): string {
+  return text.replace(
+    /^(?:结论|总结|回答|结果|Answer|Summary|Conclusion)\s*[:：]\s*(?=#{1,6}\s+)/i,
+    "",
+  );
+}
+
 function isTableSeparator(line: string): boolean {
   const cells = line
     .split("|")
@@ -310,13 +317,14 @@ function renderBlock(block: FinalTextBlock, options: FinalTextFormatOptions): st
 }
 
 export function normalizeFinalText(text: string): string {
-  return text
+  const normalized = text
     .replace(/\r\n/g, "\n")
     .split("\n")
     .map(normalizeLine)
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+  return stripLeadInBeforeHeading(normalized);
 }
 
 export function formatFinalText(text: string, options: FinalTextFormatOptions): string {

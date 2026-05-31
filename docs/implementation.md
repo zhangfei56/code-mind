@@ -118,7 +118,7 @@ Core runtime 加固（2026-05）已落地：
 | Execution | `@code-mind/execution` | `tools/*`, `mcp/mcp-adapter` | 不含 sandbox 实现 |
 | Workspace | `@code-mind/workspace` | `resolve`, `ignore`, `rules`, `session-artifacts`, `file-snapshot`, `diff-manager`, `rollback-manager` | CLI/API revert 已接入 |
 | Security | `@code-mind/security` | `permissions/*`, `safety/*` | 审批策略在此；UI 在 `apps/cli/interactive`；HTTP 队列在 `@code-mind/server-runtime` |
-| Config | `@code-mind/config` | `load-config`, `schema` | 用户 YAML（`~/.config/code-mind/config.yaml` 或 `--config`） |
+| Config | `@code-mind/config` | `load-config`, `schema` | 用户 YAML（`~/.agent/config.yaml` 或 `--config`） |
 | Shared | `@code-mind/shared` | `types`, `errors`, `patch`, `agent-event`, … | 跨包数据模型中心 |
 | Observability | `@code-mind/observability` | `event-bus`, `run-store`, `run-context`, `redaction`, `metrics-sink` | **partial**；无 replay-engine；run 流式事件另见 `core` 的 `runtime/runtime-event-hub` |
 | Memory | `@code-mind/memory` | interface + noop | |

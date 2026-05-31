@@ -29,7 +29,7 @@ apps = composition root
 
 - `composeAgentLoop` / `loadComposedToolRegistry` / `loadWorkspaceExtensions` — **`@code-mind/agent-composition`**（带工具 registry 或仅元数据；CLI 应经此包加载，避免直接 `loadExtensions`）
 - `createAgentLoopController` / `createAgentLoopRuntimeWiring`
-- `createDefaultRuntimeDependencies`
+- `createDefaultRuntimeDependencies`（L2 便利工厂，可实例化 context/execution/security/session/verify 的默认实现；不代表这些实现归属 core）
 - `buildRuntimePlan`（CLI / session lifecycle plan artifact）
 - run-state serialization helpers（`serializeRunState`、`restoreRunStateForSession` 等）
 - `createOrchestrationSessionStore`（plan-first / session 编排 / CLI session 命令；含 `getSessionDir` 等 HITL 与目录操作）
@@ -83,6 +83,7 @@ apps = composition root
 | `agent/task-strategy.ts` | keep | 步间策略（LoopPolicy / maxSteps / closing turn）。 |
 | `agent/run-session.ts` | keep | Main core entry。 |
 | `agent/plan-session-orchestrator.ts` | keep | Plan-first orchestration。 |
+| `agent/session-store-factory.ts` | keep | L2 `FileSessionStore` → `SessionStorePort` 默认工厂；L3 port 文件保持纯契约。 |
 | `agent/runtime/runtime-wiring.ts` | keep | deps → `AgentLoopRuntimeWiring` factory。 |
 | `agent/runtime/agent-loop-controller.ts` | keep | Thin controller；步间 FSM + `run()` 生命周期。 |
 | `extensions/*` | removed | `@code-mind/capabilities` |
@@ -108,6 +109,7 @@ apps = composition root
 
 @code-mind/server-runtime
   async run manager, HTTP approval queues, plan approval handler
+  depends on @code-mind/core; core must not depend on server-runtime
 
 apps/*                  composition root（`composeAgentLoop`；入口必须 `runAgentSession`，勿 `loop.run` 绕过）
 

@@ -8,6 +8,11 @@ import {
   type ToolCallLineStatus,
 } from "./tool-call-line.js";
 import { toolPayloadToFinishedLike } from "./tool-blocks.js";
+import { truncateToWidth } from "../text-wrap.js";
+import {
+  colorActivityBorder,
+  colorActivityLine,
+} from "../journal-theme.js";
 
 export const DEFAULT_ACTIVITY_PANE_HEIGHT = 8;
 
@@ -31,10 +36,17 @@ function horizontalRule(width: number): string {
 }
 
 function padPaneLine(content: string, width: number): string {
-  if (content.length >= width - 2) {
-    return `│ ${content.slice(0, width - 4)}…`;
+  const innerWidth = Math.max(1, width - 4);
+  const fitted = truncateToWidth(content, innerWidth);
+  if (fitted.length >= innerWidth) {
+    return `│ ${fitted}`;
   }
-  return `│ ${content.padEnd(width - 4)}`;
+  return `│ ${fitted.padEnd(innerWidth)}`;
+}
+
+function fitEntryText(text: string, width: number, bordered: boolean): string {
+  const maxWidth = bordered ? Math.max(1, width - 4) : Math.max(1, width - 2);
+  return truncateToWidth(text, maxWidth);
 }
 
 export class ActivityPane {
@@ -69,6 +81,17 @@ export class ActivityPane {
     if (pending) {
       this.appendSystem("thinking", "thinking…", "pending");
     }
+  }
+
+  setThinkingPreview(detail: string): void {
+    this.removeSystemEntry("thinking");
+    const preview = detail.trim();
+    const maxPreview = Math.max(16, this.width - 24);
+    this.appendSystem(
+      "thinking",
+      preview.length > 0 ? truncateDetail(preview, maxPreview) : "thinking…",
+      "pending",
+    );
   }
 
   setReasoning(length: number): void {
@@ -151,10 +174,13 @@ export class ActivityPane {
   }
 
   /** Visible window for TTY in-place redraw; full log when viewport is disabled. */
-  render(options: { viewport?: boolean; bordered?: boolean } = {}): string[] {
+  render(
+    options: { viewport?: boolean; bordered?: boolean; stream?: NodeJS.WriteStream } = {},
+  ): string[] {
     const useViewport = options.viewport !== false;
     const bordered = options.bordered !== false;
-    const rule = horizontalRule(this.width);
+    const stream = options.stream;
+    const rule = colorActivityBorder(horizontalRule(this.width), stream);
     const visible =
       useViewport && this.entries.length > this.height
         ? this.entries.slice(-this.height)
@@ -163,19 +189,18 @@ export class ActivityPane {
           : this.entries;
 
     if (!bordered) {
-      return visible.map((entry) => `  ${entry.text}`);
+      return visible.map((entry) => {
+        const plain = fitEntryText(entry.text, this.width, false);
+        const colored = colorActivityLine(plain, entry.status, stream);
+        return `  ${colored}`;
+      });
     }
 
     const lines: string[] = [rule];
-    const blankCount = useViewport
-      ? Math.max(0, this.height - visible.length)
-      : 0;
-
-    for (let i = 0; i < blankCount; i += 1) {
-      lines.push(padPaneLine("", this.width));
-    }
     for (const entry of visible) {
-      lines.push(padPaneLine(entry.text, this.width));
+      const plain = fitEntryText(entry.text, this.width, true);
+      const colored = colorActivityLine(plain, entry.status, stream);
+      lines.push(stream ? `│ ${colored}` : padPaneLine(plain, this.width));
     }
     lines.push(rule);
     return lines;
