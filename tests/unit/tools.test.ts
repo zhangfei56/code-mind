@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { clearWorkspaceIgnoreCache } from "@code-mind/workspace";
 import {
+  applyPatchTool,
   deleteFileTool,
   globPatternToRegExp,
   globTool,
@@ -159,4 +160,11 @@ export async function runToolTests(): Promise<void> {
   assert.ok(agentSchemas.some((schema) => schema.name === "search_replace"));
   assert.ok(agentSchemas.some((schema) => schema.name === "delete_file"));
   assert.ok(agentSchemas.some((schema) => schema.name === "move_file"));
+
+  assert.match(applyPatchTool.schema.description, /\*\*\* Begin Patch/);
+  assert.match(applyPatchTool.schema.description, /search_replace/);
+  assert.match(readFileTool.schema.description, /startLine/);
+  assert.match(readFileTool.schema.inputSchema.properties?.startLine?.description ?? "", /1-based/);
+  assert.match(searchReplaceTool.schema.description, /exactly once/);
+  assert.match(writeFileTool.schema.description, /apply_patch/);
 }

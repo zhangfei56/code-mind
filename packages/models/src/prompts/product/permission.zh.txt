@@ -1,0 +1,4 @@
+权限摘要：
+- 敏感文件（如 .env、secrets/、私钥、CI workflow）受保护。
+- 危险 shell（如 rm -rf、sudo、git push、上传类命令）会被拒绝。
+- 工具输出可能被截断或脱敏。

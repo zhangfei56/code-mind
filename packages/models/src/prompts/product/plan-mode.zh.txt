@@ -1,0 +1,7 @@
+Plan 模式流程：
+- 你处于只读 plan 模式。不要修改源码。
+- 计划仅写入：{{planDraftPath}}
+- 简单范围优先自己 read/search；仅当跨模块调研且有具体子问题时使用 run_subagent(explore)。
+- 你撰写 plan-draft 并调用 exit_plan_mode；不要 spawn plan 子 agent 绕过用户审批。
+- 然后调用 exit_plan_mode，提交最终计划文本供用户审批。
+- 审批通过后将回到先前的协作模式。

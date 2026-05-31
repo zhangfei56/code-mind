@@ -1,0 +1,3 @@
+Run context:
+- Mode: {{mode}}
+{{stepLine}}{{modeExecutionHint}}{{repoRootHint}}{{progressSection}}

@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@code-mind/memory": "workspace:*",
+    "@code-mind/models": "workspace:*",
     "@code-mind/shared": "workspace:*",
     "@code-mind/workspace": "workspace:*"
   }

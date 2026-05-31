@@ -27,22 +27,36 @@ function countOccurrences(content: string, needle: string): number {
   }
 }
 
+const searchReplaceSchemaDescription =
+  "Replace old_string with new_string in an existing file. By default old_string must match exactly once; set replace_all=true for every occurrence. Prefer apply_patch for multi-line edits.";
+
 export const searchReplaceTool: Tool<SearchReplaceArgs> = {
   name: "search_replace",
-  description: "Replace text in a workspace file.",
+  description: searchReplaceSchemaDescription,
   riskLevel: "high",
   availableInModes: WRITE_TOOLS_MODES,
   schema: {
     name: "search_replace",
-    description:
-      "Replace old_string with new_string in a workspace file. By default replaces the first unique match.",
+    description: searchReplaceSchemaDescription,
     inputSchema: {
       type: "object",
       properties: {
-        path: { type: "string" },
-        old_string: { type: "string" },
-        new_string: { type: "string" },
-        replace_all: { type: "boolean" },
+        path: {
+          type: "string",
+          description: "Path relative to workspace root.",
+        },
+        old_string: {
+          type: "string",
+          description: "Exact text to find. Must be unique unless replace_all is true.",
+        },
+        new_string: {
+          type: "string",
+          description: "Replacement text.",
+        },
+        replace_all: {
+          type: "boolean",
+          description: "Replace every match. Default false (requires exactly one match).",
+        },
       },
       required: ["path", "old_string", "new_string"],
     },

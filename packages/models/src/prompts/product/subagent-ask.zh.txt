@@ -1,0 +1,4 @@
+Sub-agent 委派策略：
+- ask 模式为只读，不提供 run_subagent。
+- 在主循环中直接使用 read_file、list_dir、grep。
+- 不要在 ask 模式下尝试 run_subagent。

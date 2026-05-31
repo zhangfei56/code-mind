@@ -152,6 +152,13 @@ function resolveSelectedModelConfig(
   return { provider: resolved.provider, model: resolved.model };
 }
 
+function resolveProviderModel(
+  modelKey: string | undefined,
+  config: AgentConfig,
+): string | undefined {
+  return resolveSelectedModelConfig(modelKey, config)?.model;
+}
+
 export async function executeCliArgs(args: CliArgs): Promise<number> {
   applyCliLogOverrides(args);
   cliExecuteLogDebug("Executing CLI command.", {
@@ -234,8 +241,10 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
         },
         sessionRoot,
       );
+      const resumeProviderModel = resolveProviderModel(requestedModel, config);
       const profile = createDefaultProfile(requestedModel ?? provider.name, {
         repoRootFocus: isBroadRepoRootTask(task, sessionRoot),
+        ...(resumeProviderModel !== undefined ? { providerModel: resumeProviderModel } : {}),
       });
       const { loop } = await createCliAgentLoop(sessionRoot, provider, profile);
       const session = await runAgentSession({
@@ -257,8 +266,10 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
       const requestedModel = args.model ?? planManifest.model;
       const config = loadConfigForModel(requestedModel);
       const provider = createModelProvider(config, requestedModel);
+      const executeProviderModel = resolveProviderModel(requestedModel, config);
       const profile = createDefaultProfile(requestedModel ?? provider.name, {
         repoRootFocus: false,
+        ...(executeProviderModel !== undefined ? { providerModel: executeProviderModel } : {}),
       });
       const { loop } = await createCliAgentLoop(sessionRoot, provider, profile);
       const session = await executeFromApprovedPlan({
@@ -366,8 +377,10 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
       },
       workspaceRoot,
     );
+    const skillProviderModel = resolveProviderModel(args.model, config);
     const profile = createDefaultProfile(args.model ?? provider.name, {
       repoRootFocus: isBroadRepoRootTask(previewTask, workspaceRoot),
+      ...(skillProviderModel !== undefined ? { providerModel: skillProviderModel } : {}),
     });
     const { loop } = await composeAgentLoop(workspaceRoot, {
       model: provider,
@@ -573,8 +586,10 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
     terminalComposer.install();
     terminalComposer.attachPromptOnly(`${theme.dim("agent running")} `);
   }
+  const runProviderModel = resolveProviderModel(resolved.model ?? config.defaultModel, config);
   const profile = createDefaultProfile(resolved.model ?? provider.name, {
     repoRootFocus: isBroadRepoRootTask(task, task.cwd),
+    ...(runProviderModel !== undefined ? { providerModel: runProviderModel } : {}),
   });
   const cliPermissionPrompter = useInteractiveApproval
     ? new CliPermissionPrompter({

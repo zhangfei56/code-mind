@@ -1,3 +1,22 @@
+/** Canonical apply_patch body format (single source for tool schema hints). */
+export const APPLY_PATCH_FORMAT_EXAMPLE = `*** Begin Patch
+*** Update File: path/to/file
+@@
+-old line
++new line
+*** End Patch`;
+
+/** Tool schema description for apply_patch (exported so tests can assert one source). */
+export function getApplyPatchSchemaDescription(): string {
+  return [
+    "Apply a targeted text replacement to one workspace file.",
+    "Prefer over write_file for small edits; use search_replace when replacing one unique old_string.",
+    "The - block must match file content exactly once or the patch fails.",
+    "Required format:",
+    APPLY_PATCH_FORMAT_EXAMPLE,
+  ].join("\n");
+}
+
 export interface ParsedPatch {
   filePath: string;
   oldText: string;

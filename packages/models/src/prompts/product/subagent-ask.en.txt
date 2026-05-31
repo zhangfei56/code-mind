@@ -1,0 +1,4 @@
+Sub-agent delegation policy:
+- ask mode is read-only and does not expose run_subagent.
+- Use read_file, list_dir, and grep directly in the main loop.
+- Do not attempt run_subagent in ask mode.

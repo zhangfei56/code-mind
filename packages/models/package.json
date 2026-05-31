@@ -16,7 +16,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json && rm -rf dist/prompts && cp -R src/prompts dist/prompts"
   },
   "dependencies": {
     "@code-mind/config": "workspace:*",

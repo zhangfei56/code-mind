@@ -23,6 +23,10 @@ import { runAgentModeRuntimeTests } from "./unit/agent-mode-runtime.test.js";
 import { runNoKeywordClassificationTests } from "./regression/no-keyword-classification.test.js";
 import { runConfigShowTests } from "./unit/config-show.test.js";
 import { runConfigTests } from "./unit/config.test.js";
+import { runModelPromptTests } from "./unit/model-prompt.test.js";
+import { runProductPromptTests } from "./unit/product-prompt.test.js";
+import { runContextSnapshotTests } from "./unit/context-snapshot.test.js";
+import { runRunFactsTests } from "./unit/run-facts.test.js";
 import { runContextManagerTests } from "./unit/context.test.js";
 import { runHighRiskToolTests } from "./unit/high-risk-tools.test.js";
 import { runInteractiveTests } from "./unit/interactive.test.js";
@@ -107,6 +111,10 @@ const tests: TestCase[] = [
   { name: "config show", run: runConfigShowTests },
   { name: "config", run: runConfigTests },
   { name: "context manager", run: runContextManagerTests },
+  { name: "run facts", run: runRunFactsTests },
+  { name: "context snapshot", run: runContextSnapshotTests },
+  { name: "product prompts", run: runProductPromptTests },
+  { name: "model prompt", run: runModelPromptTests },
   { name: "type contracts", run: runTypeContractTests },
   { name: "model", run: runModelTests },
   { name: "logger", run: runLoggerTests },

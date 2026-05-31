@@ -1,7 +1,11 @@
 import { readFile, writeFile } from "node:fs/promises";
 import type { Tool } from "@code-mind/shared";
 import { WRITE_TOOLS_MODES } from "@code-mind/shared";
-import { parsePatch } from "@code-mind/shared";
+import {
+  APPLY_PATCH_FORMAT_EXAMPLE,
+  getApplyPatchSchemaDescription,
+  parsePatch,
+} from "@code-mind/shared";
 import {
   captureFileSnapshot,
   DiffManager,
@@ -19,18 +23,23 @@ export function buildPatchPreview(patch: string): string {
   return truncateToolOutput(patch, { maxChars: 4000 });
 }
 
+const applyPatchSchemaDescription = getApplyPatchSchemaDescription();
+
 export const applyPatchTool: Tool<ApplyPatchArgs> = {
   name: "apply_patch",
-  description: "Apply a simple update patch to a workspace file.",
+  description: applyPatchSchemaDescription,
   riskLevel: "high",
   availableInModes: WRITE_TOOLS_MODES,
   schema: {
     name: "apply_patch",
-    description: "Apply a simple update patch to a workspace file.",
+    description: applyPatchSchemaDescription,
     inputSchema: {
       type: "object",
       properties: {
-        patch: { type: "string" },
+        patch: {
+          type: "string",
+          description: `Patch body. Must include \`*** Update File: <relative-path>\` and -/+ change lines.\nExample:\n${APPLY_PATCH_FORMAT_EXAMPLE}`,
+        },
       },
       required: ["patch"],
     },

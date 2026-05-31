@@ -1,0 +1,3 @@
+Repo-root focus: you are working from the repository root.
+Repo-root focus: use the first 1–2 steps only to identify the most relevant subdirectory, files, or failure hypothesis, then stay within that scope.
+Repo-root focus: if you cannot narrow within 2 steps, state the top 1–3 likely issues with file evidence; do not keep scanning the whole repo.

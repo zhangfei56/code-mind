@@ -195,17 +195,30 @@ export function normalizeDsmlFormatting(text: string): string {
   out = out.replace(/\btool\s+_?\s*calls\b/gi, "tool_calls");
   out = out.replace(/\binv\s*oke\b/gi, "invoke");
   out = out.replace(/\bpar\s*ameter\b/gi, "parameter");
-  out = out.replace(/<\s*([^>\n]+?)\s*>/g, (_match, inner: string) => {
-    if (!/DSML|｜｜|tool_calls|invoke|parameter/i.test(inner)) {
-      return `<${inner}>`;
+  const collapseDsmlTagInner = (inner: string): string => {
+    const normalized = inner
+      .replace(/(?:｜\s*){2}\s*DSML\s*(?:｜\s*){2}/gi, "｜｜DSML｜｜")
+      .replace(/\btool\s+_?\s*calls\b/gi, "tool_calls")
+      .replace(/\binv\s*oke\b/gi, "invoke")
+      .replace(/\bpar\s*ameter\b/gi, "parameter");
+    // Preserve attribute spacing (`invoke name="read"`) while still joining
+    // streamed token fragments (`tool` + `_c` + `alls` → `tool_calls`).
+    if (/=\s*["']/.test(normalized)) {
+      return normalized.replace(/\s+/g, " ").trim();
     }
-    return `<${inner.replace(/\s+/g, "")}>`;
-  });
-  out = out.replace(/<\s*\/\s*([^>\n]+?)\s*>/g, (_match, inner: string) => {
+    return normalized.replace(/\s+/g, "");
+  };
+  out = out.replace(/<\s*\/\s*([\s\S]*?)\s*>/g, (_match, inner: string) => {
     if (!/DSML|｜｜|tool_calls|invoke|parameter/i.test(inner)) {
       return `</${inner}>`;
     }
-    return `</${inner.replace(/\s+/g, "")}>`;
+    return `</${collapseDsmlTagInner(inner)}>`;
+  });
+  out = out.replace(/<\s*(?!\/)([\s\S]*?)\s*>/g, (_match, inner: string) => {
+    if (!/DSML|｜｜|tool_calls|invoke|parameter/i.test(inner)) {
+      return `<${inner}>`;
+    }
+    return `<${collapseDsmlTagInner(inner)}>`;
   });
   return out;
 }
@@ -236,7 +249,7 @@ export function normalizeOpenAIResponse(raw: unknown): ModelResponse {
   const message = firstChoice?.message;
   const finishReason = firstChoice?.finish_reason ?? "error";
   const usage = normalizeUsage(response);
-  const text = message?.content ?? "";
+  const rawText = message?.content ?? "";
   const reasoningContent =
     typeof message?.reasoning_content === "string" && message.reasoning_content.length > 0
       ? message.reasoning_content
@@ -245,10 +258,11 @@ export function normalizeOpenAIResponse(raw: unknown): ModelResponse {
   const fallbackToolCalls =
     toolCalls.length === 0
       ? [
-          ...normalizeJsonActionText(text),
-          ...normalizeDsmlText(text),
+          ...normalizeJsonActionText(rawText),
+          ...normalizeDsmlText(rawText),
         ]
       : [];
+  const text = containsDsmlMarkup(rawText) ? stripDsmlToolCallMarkup(rawText) : rawText;
 
   return {
     text,

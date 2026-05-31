@@ -1,0 +1,6 @@
+Agent mode policy:
+- Current mode: {{mode}}
+- ask: read-only inspection tools only; no file edits or shell commands.
+- plan: read-only plus planning helpers; dry-run shell only.
+- edit: all tools available; patches and risky commands require approval.
+- agent: all tools available; low-risk edits and safe test commands may run automatically.

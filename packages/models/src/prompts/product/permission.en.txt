@@ -1,0 +1,4 @@
+Permission summary:
+- Sensitive files such as .env, secrets/, private keys, and CI workflow files are protected.
+- Dangerous shell commands such as rm -rf, sudo, git push, and upload-like commands are denied.
+- Tool outputs may be truncated or redacted for safety.

@@ -23,20 +23,32 @@ function withLineNumbers(content: string, startLine = 1, endLine?: number): stri
     .join("\n");
 }
 
+const readFileSchemaDescription =
+  "Read a workspace file. Output lines are prefixed with line numbers (`N content`). Use startLine/endLine to slice large files.";
+
 export const readFileTool: Tool<ReadFileArgs> = {
   name: "read_file",
-  description: "Read a file from the workspace.",
+  description: readFileSchemaDescription,
   riskLevel: "low",
   availableInModes: READ_TOOLS_MODES,
   schema: {
     name: "read_file",
-    description: "Read a file from the workspace.",
+    description: readFileSchemaDescription,
     inputSchema: {
       type: "object",
       properties: {
-        path: { type: "string" },
-        startLine: { type: "number" },
-        endLine: { type: "number" },
+        path: {
+          type: "string",
+          description: "Path relative to workspace root.",
+        },
+        startLine: {
+          type: "number",
+          description: "First line to include (1-based). Defaults to 1.",
+        },
+        endLine: {
+          type: "number",
+          description: "Last line to include (1-based, inclusive). Defaults to end of file.",
+        },
       },
       required: ["path"],
     },

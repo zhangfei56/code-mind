@@ -225,6 +225,23 @@ export interface ContextBuildInput {
   session: AgentSession;
   task: UserTask;
   profile: AgentProfile;
+  /** Live run progress injected each model step; omit for static context tests. */
+  runFacts?: RunFactsSnapshot;
+}
+
+/** Serializable run progress for prompt assembly (mapped from core RunState). */
+export interface RunFactsSnapshot {
+  mode: AgentMode;
+  step: number;
+  maxSteps?: number;
+  closingTurn?: boolean;
+  modifiedFiles: string[];
+  lastTool?: { name: string; at: string };
+  lastActivity?: import("./activity.js").ActivityKind;
+  toolCounts?: import("./activity.js").ToolActivityCounts;
+  lastVerification?: VerificationResult;
+  atWorkspaceRoot: boolean;
+  planModeActive?: boolean;
 }
 
 export interface ContextSnapshot {

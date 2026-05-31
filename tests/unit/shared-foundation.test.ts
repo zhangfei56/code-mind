@@ -10,6 +10,7 @@ import {
   deriveActivityFromTool,
   getEffectiveResultStatus,
   isAgentRunSuccessful,
+  getApplyPatchSchemaDescription,
   parsePatch,
   readRequestedMaxSteps,
   toolActivityBucket,
@@ -37,6 +38,10 @@ export function runSharedFoundationTests(): void {
   assert.equal(toolActivityBucket("write_file"), "edit");
   assert.equal(toolActivityBucket("delete_file"), "edit");
   assert.equal(activityLabel("thinking"), "Thinking");
+
+  const applyPatchDescription = getApplyPatchSchemaDescription();
+  assert.match(applyPatchDescription, /\*\*\* Begin Patch/);
+  assert.match(applyPatchDescription, /\*\*\* Update File:/);
 
   const patch = parsePatch(`*** Begin Patch
 *** Update File: src/a.ts

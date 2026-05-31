@@ -5,6 +5,7 @@
     "outDir": "dist",
     "paths": {
       "@code-mind/memory": ["../memory/src/index.ts"],
+      "@code-mind/models": ["../models/src/index.ts"],
       "@code-mind/shared": ["../shared/src/index.ts"],
       "@code-mind/workspace": ["../workspace/src/index.ts"]
     }
@@ -12,6 +13,7 @@
   "include": ["src/**/*.ts"],
   "references": [
     { "path": "../shared" },
+    { "path": "../models" },
     { "path": "../workspace" },
     { "path": "../memory" }
   ]

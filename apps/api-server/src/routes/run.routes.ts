@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { loadConfigForModel } from "@code-mind/config";
-import { createModelProvider } from "@code-mind/models";
+import { createModelProvider, createDefaultAgentProfile } from "@code-mind/models";
 import {
   asyncRunManager,
   createHttpPlanApprovalHandler,
@@ -86,11 +86,11 @@ async function executeRun(
 
   const config = loadConfigForModel(body.model);
   const provider = createModelProvider(config, body.model);
-  const profile = {
-    id: "default",
-    name: "Default",
-    systemPrompt: "You are a code agent.",
-  };
+  const resolvedModel = body.model ?? config.defaultModel;
+  const modelConfig = config.models[resolvedModel];
+  const profile = createDefaultAgentProfile(resolvedModel, {
+    ...(modelConfig?.model ? { providerModel: modelConfig.model } : {}),
+  });
 
   const { loop } = await composeAgentLoop(cwd, {
     model: provider,

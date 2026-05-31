@@ -7,19 +7,28 @@ interface WriteFileArgs {
   content: string;
 }
 
+const writeFileSchemaDescription =
+  "Create a new file or overwrite an entire file with content. Prefer apply_patch or search_replace when editing existing files.";
+
 export const writeFileTool: Tool<WriteFileArgs> = {
   name: "write_file",
-  description: "Create or overwrite a workspace file with the provided content.",
+  description: writeFileSchemaDescription,
   riskLevel: "high",
   availableInModes: WRITE_TOOLS_MODES,
   schema: {
     name: "write_file",
-    description: "Create or overwrite a workspace file with the provided content.",
+    description: writeFileSchemaDescription,
     inputSchema: {
       type: "object",
       properties: {
-        path: { type: "string" },
-        content: { type: "string" },
+        path: {
+          type: "string",
+          description: "Path relative to workspace root.",
+        },
+        content: {
+          type: "string",
+          description: "Full file contents to write.",
+        },
       },
       required: ["path", "content"],
     },
