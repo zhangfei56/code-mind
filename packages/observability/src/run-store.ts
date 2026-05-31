@@ -33,6 +33,10 @@ export interface RunSummary {
   toolCalls: number;
   tokensIn: number;
   tokensOut: number;
+  totalTokens: number;
+  cachedInputTokens?: number;
+  cacheWriteInputTokens?: number;
+  uncachedInputTokens?: number;
   wallTimeMs: number;
   finishedAt: string;
 }

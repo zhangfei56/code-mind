@@ -40,6 +40,31 @@ export async function runModelTests(): Promise<void> {
   assert.equal(normalized.toolCalls[0]?.arguments.path, "package.json");
   assert.equal(normalized.usage?.totalTokens, 15);
 
+  const cached = normalizeOpenAIResponse({
+    choices: [{ finish_reason: "stop", message: { content: "ok" } }],
+    usage: {
+      prompt_tokens: 100,
+      completion_tokens: 10,
+      total_tokens: 110,
+      prompt_tokens_details: { cached_tokens: 75 },
+    },
+  });
+  assert.equal(cached.usage?.cachedInputTokens, 75);
+  assert.equal(cached.usage?.uncachedInputTokens, 25);
+
+  const deepseekCached = normalizeOpenAIResponse({
+    choices: [{ finish_reason: "stop", message: { content: "ok" } }],
+    usage: {
+      prompt_tokens: 5120,
+      completion_tokens: 80,
+      total_tokens: 5200,
+      prompt_cache_hit_tokens: 4000,
+      prompt_cache_miss_tokens: 1120,
+    },
+  });
+  assert.equal(deepseekCached.usage?.cachedInputTokens, 4000);
+  assert.equal(deepseekCached.usage?.uncachedInputTokens, 1120);
+
   const jsonActionNormalized = normalizeOpenAIResponse({
     choices: [
       {

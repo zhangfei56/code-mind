@@ -19,6 +19,9 @@ export interface TokenUsageStateSnapshot {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
+  cachedInputTokens?: number;
+  cacheWriteInputTokens?: number;
+  uncachedInputTokens?: number;
 }
 
 export interface PersistedRunStateV4 {

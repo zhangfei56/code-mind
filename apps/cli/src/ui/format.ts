@@ -20,7 +20,20 @@ export function formatContextUsage(inputTokens: number, maxContextTokens?: numbe
 }
 
 export function formatTokenUsageSummary(usage: TokenUsage): string {
-  return `in ${formatTokenCount(usage.inputTokens)} · out ${formatTokenCount(usage.outputTokens)}`;
+  const parts = [
+    `in ${formatTokenCount(usage.inputTokens)}`,
+    `out ${formatTokenCount(usage.outputTokens)}`,
+  ];
+  if (usage.cachedInputTokens !== undefined) {
+    parts.push(`cache hit ${formatTokenCount(usage.cachedInputTokens)}`);
+  }
+  if (usage.uncachedInputTokens !== undefined) {
+    parts.push(`cache miss ${formatTokenCount(usage.uncachedInputTokens)}`);
+  }
+  if (usage.cacheWriteInputTokens !== undefined) {
+    parts.push(`cache write ${formatTokenCount(usage.cacheWriteInputTokens)}`);
+  }
+  return parts.join(" · ");
 }
 
 export function outcomeGlyph(status: AgentResultStatus | string): string {

@@ -12,4 +12,5 @@ export * from "./errors.js";
 export * from "./ids.js";
 export * from "./time.js";
 export * from "./patch.js";
+export * from "./token-usage.js";
 export * from "./process-log.js";

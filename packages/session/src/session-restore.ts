@@ -12,7 +12,7 @@ import type {
   UserTask,
   WorktreeInfo,
 } from "@code-mind/shared";
-import { createId } from "@code-mind/shared";
+import { createId, DEFAULT_MAX_STEPS } from "@code-mind/shared";
 
 const CONVERSATION_KINDS = new Set<string>([
   "message.user",
@@ -75,7 +75,7 @@ export async function restoreAgentSession(input: {
     text: manifest.task,
     cwd: manifest.executionCwd ?? manifest.projectPath,
     mode: manifest.mode,
-    maxSteps: manifest.maxSteps ?? 10,
+    maxSteps: manifest.maxSteps ?? DEFAULT_MAX_STEPS,
     requestedModel: manifest.model,
     ...(manifest.requestedMaxSteps === undefined
       ? {}

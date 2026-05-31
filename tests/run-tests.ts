@@ -71,6 +71,8 @@ import { runTypeContractTests } from "./unit/types.test.js";
 import { runWorkspaceTests } from "./unit/workspace.test.js";
 import { runMemoryProviderTests } from "./unit/memory.test.js";
 import { runSharedFoundationTests } from "./unit/shared-foundation.test.js";
+import { runTokenUsageTests } from "./unit/token-usage.test.js";
+import { runMetricsSinkTests } from "./unit/metrics-sink.test.js";
 import { runSystemPromptTests } from "./unit/system-prompt.test.js";
 import { runCoreResultStatusTests } from "./unit/core-result-status.test.js";
 import { runVerifyPipelineTests } from "./unit/verify-pipeline.test.js";
@@ -84,6 +86,8 @@ interface TestCase {
 const tests: TestCase[] = [
   { name: "package exports", run: runPackageExportsTests },
   { name: "shared foundation", run: runSharedFoundationTests },
+  { name: "token usage", run: runTokenUsageTests },
+  { name: "metrics sink", run: runMetricsSinkTests },
   { name: "memory provider", run: runMemoryProviderTests },
   { name: "system prompt", run: runSystemPromptTests },
   { name: "core result status", run: runCoreResultStatusTests },

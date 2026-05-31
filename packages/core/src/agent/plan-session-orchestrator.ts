@@ -6,7 +6,7 @@ import type {
   SessionManifest,
   UserTask,
 } from "@code-mind/shared";
-import { ValidationError, createId, nowIso } from "@code-mind/shared";
+import { ValidationError, createId, nowIso, DEFAULT_MAX_STEPS } from "@code-mind/shared";
 import { createOrchestrationSessionStore } from "./session-store-factory.js";
 import { AgentLoopController } from "./runtime/agent-loop-controller.js";
 import type { PlanApprovalHandler } from "./plan-approval.js";
@@ -102,7 +102,7 @@ export async function executeFromApprovedPlan(
     text: planManifest.task,
     cwd: planManifest.executionCwd ?? input.workspaceRoot,
     mode: executionMode,
-    maxSteps: input.maxSteps ?? planManifest.maxSteps ?? 10,
+    maxSteps: input.maxSteps ?? planManifest.maxSteps ?? DEFAULT_MAX_STEPS,
     metadata: {
       createdAt: nowIso(),
       executeFromPlan: input.planSessionId,

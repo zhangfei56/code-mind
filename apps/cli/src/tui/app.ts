@@ -8,6 +8,7 @@ import type {
   AgentResult,
   UserTask,
 } from "@code-mind/shared";
+import { DEFAULT_MAX_STEPS } from "@code-mind/shared";
 import { createId, nowIso, ValidationError } from "@code-mind/shared";
 import { resolveWorkspace } from "@code-mind/workspace";
 import { GitManager } from "@code-mind/execution";
@@ -121,7 +122,7 @@ export async function startTuiPreview(input: {
     cwd,
     mode: input.mode,
     model: input.model,
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
   });
   void app.replayEvents(input.events, input.delayMs ?? 250);
   await app.start();

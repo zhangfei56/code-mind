@@ -1,5 +1,5 @@
 import type { AgentMode, EventLevel } from "@code-mind/shared";
-import { AGENT_MODES, DEFAULT_AGENT_MODE, ValidationError } from "@code-mind/shared";
+import { AGENT_MODES, DEFAULT_AGENT_MODE, DEFAULT_MAX_STEPS, ValidationError } from "@code-mind/shared";
 import { CLI_BIN_NAME } from "./cli-name.js";
 
 export interface RunCliArgs {
@@ -273,7 +273,7 @@ export function parseArgs(argv: string[]): CliArgs {
     let cwd = process.cwd();
     let model: string | undefined;
     let mode: AgentMode = DEFAULT_AGENT_MODE;
-    let maxSteps = 10;
+    let maxSteps = DEFAULT_MAX_STEPS;
     let continueSession = false;
     let sessionId: string | undefined;
     let fork = false;
@@ -555,7 +555,7 @@ export function parseArgs(argv: string[]): CliArgs {
     let cwd = process.cwd();
     let mode: AgentMode | undefined;
     let model: string | undefined;
-    let maxSteps = 10;
+    let maxSteps = DEFAULT_MAX_STEPS;
 
     for (let index = 3; index < argv.length; index += 1) {
       const value = argv[index];
@@ -619,7 +619,7 @@ export function parseArgs(argv: string[]): CliArgs {
 
     let cwd = process.cwd();
     let model: string | undefined;
-    let maxSteps = 10;
+    let maxSteps = DEFAULT_MAX_STEPS;
 
     for (let index = 3; index < argv.length; index += 1) {
       const value = argv[index];
@@ -940,7 +940,7 @@ export function parseArgs(argv: string[]): CliArgs {
   let model: string | undefined;
   let mode: AgentMode = presetMode ?? DEFAULT_AGENT_MODE;
   let modeExplicit = presetMode !== undefined;
-  let maxSteps = 10;
+  let maxSteps = DEFAULT_MAX_STEPS;
   let planFirst = false;
   let useWorktree = false;
   let skill: string | undefined;

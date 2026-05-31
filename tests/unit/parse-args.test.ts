@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { ValidationError } from "@code-mind/shared";
+import { ValidationError, DEFAULT_MAX_STEPS } from "@code-mind/shared";
 import { parseArgs } from "../../apps/cli/src/cli/parse-args.js";
 
 export function runParseArgsTests(): void {
@@ -8,7 +8,7 @@ export function runParseArgsTests(): void {
     command: "interactive",
     cwd: process.cwd(),
     mode: "edit",
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
   });
 
   const interactiveWithFlags = parseArgs(["--cwd", ".", "--model", "local:demo", "--mode", "agent"]);
@@ -17,7 +17,7 @@ export function runParseArgsTests(): void {
     cwd: ".",
     model: "local:demo",
     mode: "agent",
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
   });
 
   const interactiveWithLogging = parseArgs([
@@ -30,7 +30,7 @@ export function runParseArgsTests(): void {
     command: "interactive",
     cwd: ".",
     mode: "edit",
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
     logLevel: "debug",
   });
 
@@ -81,7 +81,7 @@ export function runParseArgsTests(): void {
     cwd: process.cwd(),
     mode: "edit",
     modeExplicit: false,
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
   });
 
   const withFlags = parseArgs([
@@ -115,7 +115,7 @@ export function runParseArgsTests(): void {
     cwd: process.cwd(),
     mode: "plan",
     modeExplicit: true,
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
   });
 
   const askSubcommand = parseArgs(["ask", "解释这个项目"]);
@@ -124,7 +124,7 @@ export function runParseArgsTests(): void {
     cwd: process.cwd(),
     mode: "ask",
     modeExplicit: true,
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
   });
 
   const editAuto = parseArgs(["edit", "修 failing test", "--auto"]);
@@ -133,7 +133,7 @@ export function runParseArgsTests(): void {
     cwd: process.cwd(),
     mode: "agent",
     modeExplicit: true,
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
   });
 
   const verify = parseArgs(["verify", "--cwd", ".", "--test", "--lint"]);
@@ -183,7 +183,7 @@ export function runParseArgsTests(): void {
     cwd: ".",
     mode: "edit",
     modeExplicit: false,
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
     continue: true,
   });
 
@@ -193,7 +193,7 @@ export function runParseArgsTests(): void {
     cwd: process.cwd(),
     mode: "edit",
     modeExplicit: false,
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
     json: true,
   });
 
@@ -203,7 +203,7 @@ export function runParseArgsTests(): void {
     cwd: process.cwd(),
     mode: "edit",
     modeExplicit: false,
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
     jsonl: true,
   });
 
@@ -218,7 +218,7 @@ export function runParseArgsTests(): void {
     cwd: process.cwd(),
     mode: "edit",
     modeExplicit: false,
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
     logLevel: "debug",
   });
 
@@ -228,7 +228,7 @@ export function runParseArgsTests(): void {
     cwd: ".",
     mode: "edit",
     modeExplicit: false,
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
     promptFile: "prompt.md",
   });
 

@@ -195,6 +195,13 @@ export function renderHomePage(): string {
         ]);
         const pending = Array.isArray(approvals) ? approvals : [];
         const role = manifest.sessionRole || 'standard';
+        const usage = manifest.usageSummary;
+        const usageLine = usage
+          ? 'Tokens: in ' + usage.inputTokens + ' · out ' + usage.outputTokens +
+            (usage.cachedInputTokens != null ? ' · cache hit ' + usage.cachedInputTokens : '') +
+            (usage.uncachedInputTokens != null ? ' · cache miss ' + usage.uncachedInputTokens : '') +
+            ' · calls ' + usage.modelCalls
+          : '';
         const links = [
           manifest.executeSessionId ? 'Execute: ' + manifest.executeSessionId : '',
           manifest.planSessionId ? 'Plan: ' + manifest.planSessionId : '',
@@ -203,6 +210,7 @@ export function renderHomePage(): string {
           '<p><span class="badge">' + escapeHtml(manifest.status || 'unknown') + '</span> ' +
           escapeHtml(manifest.mode || '') + ' · ' + escapeHtml(role) + '</p>' +
           (links ? '<p class="muted">' + escapeHtml(links) + '</p>' : '') +
+          (usageLine ? '<p class="muted">' + escapeHtml(usageLine) + '</p>' : '') +
           '<p>' + escapeHtml(manifest.task || '') + '</p>' +
           '<h3>Pending approvals (' + pending.length + ')</h3>' +
           (pending.length

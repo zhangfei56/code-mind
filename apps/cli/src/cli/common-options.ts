@@ -1,5 +1,5 @@
 import type { Argv } from "yargs";
-import { AGENT_MODES, type EventLevel } from "@code-mind/shared";
+import { AGENT_MODES, DEFAULT_MAX_STEPS, type EventLevel } from "@code-mind/shared";
 import type { AgentMode } from "@code-mind/shared";
 import type { RunCliArgs } from "./parse-args.js";
 
@@ -71,7 +71,7 @@ export function withRunOptions(yargs: Argv): Argv {
       })
       .option("max-steps", {
         type: "number",
-        default: 10,
+        default: DEFAULT_MAX_STEPS,
         describe: "Maximum agent steps",
       })
       .option("plan", {
@@ -191,7 +191,7 @@ export function coerceRunOptions(options: Record<string, unknown>): RunOptions {
   return {
     cwd: String(options.cwd ?? process.cwd()),
     mode: String(options.mode ?? "edit"),
-    maxSteps: Number(options.maxSteps ?? options["max-steps"] ?? 10),
+    maxSteps: Number(options.maxSteps ?? options["max-steps"] ?? DEFAULT_MAX_STEPS),
     ...(options.model === undefined ? {} : { model: String(options.model) }),
     ...(options.plan ? { plan: true } : {}),
     ...(options.worktree ? { worktree: true } : {}),

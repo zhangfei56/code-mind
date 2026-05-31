@@ -120,6 +120,35 @@ export interface TokenUsage {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
+  /** Input tokens served from provider prompt cache (cache hit). DeepSeek: prompt_cache_hit_tokens. */
+  cachedInputTokens?: number;
+  /** Input tokens written to provider prompt cache (Anthropic cache_creation_input_tokens). */
+  cacheWriteInputTokens?: number;
+  /** Input tokens not served from cache. DeepSeek: prompt_cache_miss_tokens. */
+  uncachedInputTokens?: number;
+}
+
+/** Per-session rollup persisted on SessionManifest. */
+export interface SessionUsageSummary {
+  modelCalls: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cachedInputTokens?: number;
+  cacheWriteInputTokens?: number;
+  uncachedInputTokens?: number;
+  lastUpdatedAt: string;
+}
+
+/** One model API call entry in sessions/<id>/usage-ledger.jsonl. */
+export interface ModelUsageRecord {
+  ts: string;
+  runId?: string;
+  step: number;
+  model: string;
+  finishReason?: string;
+  durationMs?: number;
+  usage: TokenUsage;
 }
 
 export interface ResponseFormat {
@@ -294,6 +323,8 @@ export interface SessionManifest {
   executeSessionId?: string;
   /** Plan session that produced this execute session. */
   planSessionId?: string;
+  /** Cumulative model token usage for this session (all runs). */
+  usageSummary?: SessionUsageSummary;
 }
 
 export interface PlannedFileChange {

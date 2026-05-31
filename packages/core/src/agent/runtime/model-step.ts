@@ -198,6 +198,15 @@ export async function executeModelStep(
       );
       if (response.usage) {
         addTokenUsage(runState.usage, response.usage);
+        await sessionStore.recordModelUsage(session.id, {
+          ts: nowIso(),
+          ...(input.eventBus?.runId === undefined ? {} : { runId: input.eventBus.runId }),
+          step: stepNumber,
+          model: input.model.name,
+          finishReason: response.finishReason,
+          durationMs: Date.now() - modelStartedAt,
+          usage: response.usage,
+        });
       }
       await input.eventBus?.emitProcessLog("core.model-step", "Received model response.", {
         sessionId: session.id,

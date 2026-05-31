@@ -17,6 +17,7 @@ import {
 } from "@code-mind/core";
 import {
   AGENT_MODES,
+  DEFAULT_MAX_STEPS,
   createId,
   logProcess,
   nowIso,
@@ -58,7 +59,7 @@ async function executeRun(
   logProcess("api.run-routes", "debug", "Executing API run request.", {
     workspaceRoot,
     mode: body.mode ?? "agent",
-    maxSteps: body.maxSteps ?? 10,
+    maxSteps: body.maxSteps ?? DEFAULT_MAX_STEPS,
     model: body.model,
     cwd: body.cwd,
     planFirst: body.planFirst === true,
@@ -78,7 +79,7 @@ async function executeRun(
       text: body.task.trim(),
       cwd,
       mode,
-      maxSteps: body.maxSteps ?? 10,
+      maxSteps: body.maxSteps ?? DEFAULT_MAX_STEPS,
       metadata: { createdAt: nowIso() },
     },
     cwd,

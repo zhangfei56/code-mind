@@ -5,4 +5,9 @@ export {
 } from "./session-restore.js";
 export { revertSession, type RevertSessionResult } from "./session-revert.js";
 export { FileSessionStore } from "./session-store.js";
+export {
+  appendModelUsageRecord,
+  buildUsageSummaryFromRun,
+  buildUsageSummaryUpdate,
+} from "./usage-ledger.js";
 export { buildCurrentSummary, writeSummary } from "./summary-writer.js";

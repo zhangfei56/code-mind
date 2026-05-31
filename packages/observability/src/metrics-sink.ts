@@ -1,12 +1,12 @@
-import type { AgentEvent, AgentResultStatus } from "@code-mind/shared";
+import type { AgentEvent, AgentResultStatus, TokenUsage } from "@code-mind/shared";
+import { addTokenUsage, createEmptyTokenUsage } from "@code-mind/shared";
 import type { RunSummary } from "./run-store.js";
 
 export class MetricsSink {
   private steps = 0;
   private modelCalls = 0;
   private toolCalls = 0;
-  private tokensIn = 0;
-  private tokensOut = 0;
+  private readonly usage = createEmptyTokenUsage();
   private startedAt = Date.now();
 
   onEvent(event: AgentEvent): void {
@@ -16,11 +16,8 @@ export class MetricsSink {
         break;
       case "model.response":
         this.modelCalls += 1;
-        if (typeof event.payload.tokensIn === "number") {
-          this.tokensIn += event.payload.tokensIn;
-        }
-        if (typeof event.payload.tokensOut === "number") {
-          this.tokensOut += event.payload.tokensOut;
+        if (event.payload.usage && typeof event.payload.usage === "object") {
+          addTokenUsage(this.usage, event.payload.usage as TokenUsage);
         }
         break;
       case "tool.result":
@@ -39,8 +36,18 @@ export class MetricsSink {
       steps: this.steps,
       modelCalls: this.modelCalls,
       toolCalls: this.toolCalls,
-      tokensIn: this.tokensIn,
-      tokensOut: this.tokensOut,
+      tokensIn: this.usage.inputTokens,
+      tokensOut: this.usage.outputTokens,
+      totalTokens: this.usage.totalTokens,
+      ...(this.usage.cachedInputTokens === undefined
+        ? {}
+        : { cachedInputTokens: this.usage.cachedInputTokens }),
+      ...(this.usage.cacheWriteInputTokens === undefined
+        ? {}
+        : { cacheWriteInputTokens: this.usage.cacheWriteInputTokens }),
+      ...(this.usage.uncachedInputTokens === undefined
+        ? {}
+        : { uncachedInputTokens: this.usage.uncachedInputTokens }),
       wallTimeMs: Date.now() - this.startedAt,
       finishedAt: new Date().toISOString(),
     };

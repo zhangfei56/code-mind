@@ -471,7 +471,7 @@ export class OpenAICompatibleProvider implements ModelProvider {
       streaming: isModelStreamingEnabled(),
       maxContextTokens: 1_000_000,
       maxOutputTokens: 384_000,
-      supportsPromptCache: false,
+      supportsPromptCache: this.isDeepSeek,
       supportsComputerUse: false,
     };
   }

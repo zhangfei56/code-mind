@@ -1,12 +1,17 @@
+import {
+  addTokenUsage as mergeTokenUsage,
+  createEmptyTokenUsage as sharedCreateEmptyTokenUsage,
+  createEmptyToolActivityCounts,
+  readRequestedMaxSteps,
+} from "@code-mind/shared";
 import type {
   AgentMode,
   ReviewResult,
   TokenUsage,
+  ToolActivityCounts,
   UserTask,
   VerificationResult,
 } from "@code-mind/shared";
-import type { ToolActivityCounts } from "@code-mind/shared";
-import { createEmptyToolActivityCounts, readRequestedMaxSteps } from "@code-mind/shared";
 export { readRequestedMaxSteps } from "@code-mind/shared";
 import {
   createRunKernelState,
@@ -81,13 +86,11 @@ export interface RunState {
 }
 
 export function createEmptyTokenUsage(): TokenUsageState {
-  return { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  return sharedCreateEmptyTokenUsage();
 }
 
 export function addTokenUsage(state: TokenUsageState, usage: TokenUsage): void {
-  state.inputTokens += usage.inputTokens;
-  state.outputTokens += usage.outputTokens;
-  state.totalTokens += usage.totalTokens;
+  mergeTokenUsage(state, usage);
 }
 
 export function createRunState(task: UserTask): RunState {

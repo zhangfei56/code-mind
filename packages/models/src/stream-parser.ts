@@ -1,4 +1,5 @@
 import type { ModelResponse, ToolCall, TokenUsage } from "@code-mind/shared";
+import { normalizeProviderUsage } from "@code-mind/shared";
 import { normalizeOpenAIResponse, stripDsmlToolCallMarkup } from "./normalizer.js";
 
 interface StreamChoiceDelta {
@@ -23,6 +24,15 @@ interface StreamChunk {
     prompt_tokens?: number;
     completion_tokens?: number;
     total_tokens?: number;
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_read_input_tokens?: number;
+    cache_creation_input_tokens?: number;
+    prompt_cache_hit_tokens?: number;
+    prompt_cache_miss_tokens?: number;
+    prompt_tokens_details?: {
+      cached_tokens?: number;
+    };
   };
 }
 
@@ -48,15 +58,7 @@ function parseToolArguments(raw: string | undefined): Record<string, unknown> {
 }
 
 function normalizeUsage(usage: StreamChunk["usage"]): TokenUsage | undefined {
-  if (!usage) {
-    return undefined;
-  }
-
-  return {
-    inputTokens: usage.prompt_tokens ?? 0,
-    outputTokens: usage.completion_tokens ?? 0,
-    totalTokens: usage.total_tokens ?? 0,
-  };
+  return normalizeProviderUsage(usage);
 }
 
 export interface StreamChunkDeltas {

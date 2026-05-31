@@ -3,6 +3,7 @@ import type {
   AgentProfile,
   AgentSession,
   ApprovalRecord,
+  ModelUsageRecord,
   ReviewResult,
   SessionManifest,
   UserTask,
@@ -37,6 +38,14 @@ export interface SessionStorePort {
   saveApproval(record: ApprovalRecord): Promise<void>;
   listApprovals(sessionId: string): Promise<ApprovalRecord[]>;
   getPendingApprovals(sessionId: string): Promise<ApprovalRecord[]>;
+  /** Append one model API usage row and roll up SessionManifest.usageSummary. */
+  recordModelUsage(sessionId: string, record: ModelUsageRecord): Promise<SessionManifest>;
+  /** Merge final run usage (e.g. when per-call ledger was skipped). */
+  mergeRunUsageSummary(
+    sessionId: string,
+    usage: ModelUsageRecord["usage"],
+    modelCalls: number,
+  ): Promise<SessionManifest>;
   /** Session directory for apps orchestration (export/fork); concrete stores live outside core. */
   getSessionDir(sessionId: string): string;
 }

@@ -1,4 +1,5 @@
 import type { ModelResponse, ToolCall, TokenUsage } from "@code-mind/shared";
+import { normalizeProviderUsage } from "@code-mind/shared";
 
 interface OpenAIChoiceMessage {
   content?: string | null;
@@ -21,6 +22,15 @@ interface OpenAIChatResponse {
     prompt_tokens?: number;
     completion_tokens?: number;
     total_tokens?: number;
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_read_input_tokens?: number;
+    cache_creation_input_tokens?: number;
+    prompt_cache_hit_tokens?: number;
+    prompt_cache_miss_tokens?: number;
+    prompt_tokens_details?: {
+      cached_tokens?: number;
+    };
   };
 }
 
@@ -66,15 +76,7 @@ function normalizeToolCalls(message: OpenAIChoiceMessage | undefined): ToolCall[
 }
 
 function normalizeUsage(response: OpenAIChatResponse): TokenUsage | undefined {
-  if (!response.usage) {
-    return undefined;
-  }
-
-  return {
-    inputTokens: response.usage.prompt_tokens ?? 0,
-    outputTokens: response.usage.completion_tokens ?? 0,
-    totalTokens: response.usage.total_tokens ?? 0,
-  };
+  return normalizeProviderUsage(response.usage);
 }
 
 function normalizeJsonActionText(text: string): ToolCall[] {

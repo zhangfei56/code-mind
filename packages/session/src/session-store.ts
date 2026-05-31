@@ -11,6 +11,7 @@ import type {
   AgentPlan,
   AgentSession,
   ApprovalRecord,
+  ModelUsageRecord,
   ReviewResult,
   SessionManifest,
   TestResult,
@@ -23,6 +24,11 @@ import type { PersistedRunState, StoredRunState } from "@code-mind/shared";
 import { SessionManifestStore } from "./session-manifest.js";
 import { restoreAgentSession } from "./session-restore.js";
 import { writeSummary } from "./summary-writer.js";
+import {
+  appendModelUsageRecord,
+  buildUsageSummaryFromRun,
+  buildUsageSummaryUpdate,
+} from "./usage-ledger.js";
 
 export class FileSessionStore {
   private readonly manifests: SessionManifestStore;
@@ -291,6 +297,24 @@ export class FileSessionStore {
 
   async listSessionManifests(): Promise<SessionManifest[]> {
     return this.manifests.list();
+  }
+
+  async recordModelUsage(sessionId: string, record: ModelUsageRecord): Promise<SessionManifest> {
+    const sessionDir = this.getSessionDir(sessionId);
+    await appendModelUsageRecord(sessionDir, record);
+    const manifest = await this.readManifest(sessionId);
+    const usageSummary = buildUsageSummaryUpdate(manifest, record);
+    return this.updateManifest(sessionId, { usageSummary });
+  }
+
+  async mergeRunUsageSummary(
+    sessionId: string,
+    usage: ModelUsageRecord["usage"],
+    modelCalls: number,
+  ): Promise<SessionManifest> {
+    const manifest = await this.readManifest(sessionId);
+    const usageSummary = buildUsageSummaryFromRun(manifest, usage, modelCalls);
+    return this.updateManifest(sessionId, { usageSummary });
   }
 
   async restoreSession(

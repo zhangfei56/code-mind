@@ -111,6 +111,7 @@ export async function completeRun(
     }),
   );
   await deps.publish(input, runFinishedEvent(getEffectiveResultStatus(result)));
+  const latestManifest = await sessionStore.readManifest(session.id);
   await deps.setSessionStatus(
     sessionStore,
     session.id,
@@ -127,6 +128,9 @@ export async function completeRun(
       ...(Array.isArray(result.metadata?.modifiedFiles)
         ? { modifiedFiles: result.metadata.modifiedFiles as string[] }
         : {}),
+      ...(latestManifest.usageSummary === undefined
+        ? {}
+        : { usageSummary: latestManifest.usageSummary }),
     },
   );
   if (runState) {

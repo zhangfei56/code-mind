@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { DEFAULT_MAX_STEPS } from "@code-mind/shared";
 import {
   getModeOverride,
   hasExplicitModeOption,
@@ -10,7 +11,7 @@ function baseRunOptions(overrides: Partial<RunOptions> = {}): RunOptions {
   return {
     cwd: "/tmp/project",
     mode: "edit",
-    maxSteps: 10,
+    maxSteps: DEFAULT_MAX_STEPS,
     ...overrides,
   };
 }
@@ -34,7 +35,7 @@ export function runCommonOptionsTests(): void {
       cwd: "/tmp/project",
       mode: "agent",
       modeExplicit: false,
-      maxSteps: 10,
+      maxSteps: DEFAULT_MAX_STEPS,
     },
   );
 }
