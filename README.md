@@ -4,7 +4,7 @@ Local-first agent code tool (pnpm monorepo).
 
 ## Requirements
 
-- **Node.js 22** (see [.nvmrc](.nvmrc))
+- **Node.js 22.22.0** (see [.nvmrc](.nvmrc))
 
 ```bash
 nvm use 22.22.0

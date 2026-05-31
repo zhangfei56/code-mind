@@ -81,9 +81,9 @@ core-boundary.md > principles.md（本文）> data-model / file-layout > runtime
 ## 4. 开发命令
 
 ```bash
-nvm use 22
+nvm use 22.22.0
 pnpm install && pnpm build
-pnpm exec tsx tests/run-tests.ts
+pnpm test
 ```
 
 用户操作见 [user-guide.md](../user-guide.md)。

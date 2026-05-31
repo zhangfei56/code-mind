@@ -15,7 +15,7 @@
 - Subagent（`run_subagent`）+ plan mode protocol  
 - Session revert + worktree  
 - CLI L0–L4 + `--tui` + REPL  
-- `pnpm build` + 79 tests（Node ≥ 22）
+- `pnpm build` + 79 tests（Node 22.22.0）
 
 ---
 
@@ -35,6 +35,20 @@
 | CORE-02 | ReviewEngine 接入主 loop |
 | CORE-03 | Sub-agent spec |
 | API-02 | 异步 run + WebSocket 事件流 |
+
+---
+
+## Context Compaction
+
+架构：[runtime/context-compaction.md](../architecture/runtime/context-compaction.md) · Phase 0（F 静态、summary 后置、env date 冻结）已合并。
+
+| ID | Phase | 项 |
+|----|-------|-----|
+| CTX-CMP-1 | 1 | `CompactionPolicy` / Port 类型（strategy 固定 `llm`） |
+| CTX-CMP-2 | 1 | context 拆分 + `buildCompactionMergePrompt` |
+| CTX-CMP-3 | 2 | `createCompactionPort` + `compactSessionIfNeeded` |
+| CTX-CMP-4 | 3 | `context.compacted` 扩展 + CLI L2 + compaction-ledger |
+| CTX-CMP-5 | 4 | config.yaml compaction、trace eval、`/context` 指标 |
 
 ---
 

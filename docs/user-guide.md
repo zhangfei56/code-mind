@@ -94,7 +94,7 @@ code-mind serve --port 3847        # → code-mind web start --port 3847
 | `--cwd <path>` | | 工作区根目录 | 当前目录 |
 | `--model <name>` | `-m` | 模型 config 键或 `provider:model` | `default_model` |
 | `--mode <mode>` | | `ask` / `plan` / `edit` / `agent` | **`edit`** |
-| `--max-steps <n>` | | 最大推理步数 | `10` |
+| `--max-steps <n>` | | 最大推理步数 | `100` |
 | `--continue` | `-c` | 继续最近 session | 关 |
 | `--session <id>` | `-s` | 继续指定 session | — |
 | `--fork` | | 继续前 fork 出新 session | 关 |
@@ -113,7 +113,7 @@ code-mind serve --port 3847        # → code-mind web start --port 3847
 
 | 项 | 要求 |
 |----|------|
-| Node.js | **≥ 22**（推荐与 [.nvmrc](../.nvmrc) 一致：`22.22.0`） |
+| Node.js | **22.22.0**（见 [.nvmrc](../.nvmrc)） |
 | 包管理 | **pnpm**（通过 Corepack 启用） |
 
 ```bash
@@ -540,7 +540,7 @@ code-mind --mode edit --cwd .
 | Exit code 1 但看似改完 | 看输出 `Termination:`；`effectiveStatus` 可能与原始 status 不同 |
 | Session 找不到 | 确认 `--cwd` 与创建时一致（`<cwd>/.agent/sessions/`） |
 | 端口冲突 | `code-mind serve` 默认 3000；`pnpm web` 默认 3847；用 `--port` 显式指定 |
-| 编译失败 | `node -v` ≥ 22；删 `node_modules` 后 `pnpm install && pnpm build` |
+| 编译失败 | `node -v` 为 22.22.0；删 `node_modules` 后 `pnpm install && pnpm build` |
 
 ---
 

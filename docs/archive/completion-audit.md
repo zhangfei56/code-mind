@@ -7,9 +7,9 @@
 ## 如何运行
 
 ```bash
-# Node >= 22
+# Node 22.22.0
 pnpm build
-pnpm exec tsx tests/run-tests.ts
+pnpm test
 ```
 
 关键自动化用例（非完整列表）：
@@ -91,7 +91,7 @@ pnpm exec tsx tests/run-tests.ts
 ### 构建
 
 - [x] `pnpm build` 通过
-- [x] `pnpm exec tsx tests/run-tests.ts` 在 Node >= 22 环境通过（需 localhost bind 的 API 测试视环境而定）
+- [x] `pnpm test` 在 Node 22.22.0 环境通过（需 localhost bind 的 API 测试视环境而定）
 
 ### 增强项（不纳入核心验收）
 

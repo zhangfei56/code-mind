@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.22.0"
   },
   "bin": {
     "code-mind": "./apps/cli/dist/cli/index.js"
