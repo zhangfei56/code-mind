@@ -7,6 +7,11 @@ import type { RunState } from "./run-state.js";
 import { getEffectiveMaxSteps } from "./run-state.js";
 import { runHooks, type SessionLifecycleDeps } from "./session-lifecycle.js";
 import { messageUserEvent, turnStartedEvent } from "./agent-events.js";
+import { resolveTaskClarityIfNeeded } from "../task-clarity-resolution.js";
+import { resolveSkillConfirmationIfNeeded } from "../skill-confirmation-resolution.js";
+import type { ExtensionRegistry } from "@code-mind/capabilities";
+import type { ClarifyPrompter, SkillConfirmPrompter } from "./types.js";
+import type { SkillRunPolicy } from "@code-mind/shared";
 
 export interface SessionInitDeps {
   lifecycle: SessionLifecycleDeps;
@@ -20,6 +25,10 @@ export interface SessionInitDeps {
     input: RuntimeInput | undefined,
     event: import("@code-mind/shared").AgentEventInput,
   ) => Promise<void>;
+  clarifyPrompter?: ClarifyPrompter;
+  skillConfirmPrompter?: SkillConfirmPrompter;
+  extensionRegistry?: ExtensionRegistry;
+  skillRunPolicy?: SkillRunPolicy;
 }
 
 export async function initializeSession(
@@ -66,7 +75,7 @@ export async function initializeSession(
     executionCwd: session.task.cwd,
   });
 
-  const policy = createLoopPolicy(session.task);
+  const policy = createLoopPolicy(session.task, session.workspaceRoot);
   runState.progress.mode = policy.mode;
   session.metadata.mode = policy.mode;
 
@@ -91,6 +100,35 @@ export async function initializeSession(
     session.messages.push(userMessage);
     await deps.publish(input, messageUserEvent(userMessage.content));
   }
+
+  await resolveTaskClarityIfNeeded(
+    {
+      ...(deps.clarifyPrompter === undefined ? {} : { clarifyPrompter: deps.clarifyPrompter }),
+      setSessionStatus: deps.setSessionStatus,
+      publish: deps.publish,
+    },
+    sessionStore,
+    session,
+    input,
+  );
+
+  await resolveSkillConfirmationIfNeeded(
+    {
+      ...(deps.skillConfirmPrompter === undefined
+        ? {}
+        : { skillConfirmPrompter: deps.skillConfirmPrompter }),
+      ...(deps.extensionRegistry === undefined
+        ? {}
+        : { extensionRegistry: deps.extensionRegistry }),
+      ...(deps.skillRunPolicy === undefined ? {} : { skillRunPolicy: deps.skillRunPolicy }),
+      setSessionStatus: deps.setSessionStatus,
+      publish: deps.publish,
+    },
+    sessionStore,
+    session,
+    input,
+  );
+
   await sessionStore.saveCurrentSummary(
     session.id,
     buildCurrentSummary(session, input.model.name),

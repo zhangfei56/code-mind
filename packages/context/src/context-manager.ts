@@ -19,6 +19,7 @@ import { createRuntimeSystemPrompt } from "./system-prompt.js";
 import { buildRunFactsBlock } from "./run-facts-block.js";
 import { buildPlanModeAttachment } from "./plan-mode-attachment.js";
 import { buildSubagentDelegationBlock } from "./subagent-delegation-block.js";
+import { buildRepoMap } from "./repo-map.js";
 
 const defaultMemoryProvider = new NoopMemoryProvider();
 
@@ -83,6 +84,14 @@ export class DefaultContextManager implements ContextManager {
         ? profile.metadata.providerModel
         : undefined;
 
+    const shouldIncludeRepoMap =
+      (input.runFacts?.scopeControlActive === true ||
+        input.runFacts?.atWorkspaceRoot === true) &&
+      (task.mode === "edit" || task.mode === "agent");
+    const repoMapBlock = shouldIncludeRepoMap
+      ? await buildRepoMap(session.workspaceRoot)
+      : undefined;
+
     const messages: InternalMessage[] = [
       {
         id: createId("msg"),
@@ -137,6 +146,16 @@ export class DefaultContextManager implements ContextManager {
         content: buildModeExecutionSummary(session, locale, input.runFacts),
         createdAt: nowIso(),
       },
+      ...(repoMapBlock
+        ? [
+            {
+              id: createId("msg"),
+              role: "system" as const,
+              content: wrapUntrustedContent("repo-map", repoMapBlock, locale),
+              createdAt: nowIso(),
+            },
+          ]
+        : []),
       ...(
         buildPlanModeAttachment(session)
           ? [

@@ -33,6 +33,7 @@
   "dependencies": {
     "@code-mind/security": "workspace:*",
     "@code-mind/shared": "workspace:*",
-    "@code-mind/workspace": "workspace:*"
+    "@code-mind/workspace": "workspace:*",
+    "typescript": "^5.9.3"
   }
 }

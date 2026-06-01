@@ -107,10 +107,16 @@ Each case may define `graders`:
 ```bash
 # 1. Establish baseline (once per model + workload)
 BENCHMARK_MODEL=your-model pnpm eval:micro:baseline
+BENCHMARK_MODEL=your-model pnpm eval:polyglot:baseline
+BENCHMARK_MODEL=your-model pnpm eval:swebench:baseline
 
 # 2. After changes
 BENCHMARK_MODEL=your-model pnpm eval:micro
+BENCHMARK_MODEL=your-model pnpm eval:polyglot
+BENCHMARK_MODEL=your-model pnpm eval:swebench
 
-# 3. Compare
-pnpm eval:compare -- benchmarks/baselines/t1-micro-your-model.json
+# 3. Compare (auto-resolves benchmarks/baselines/<workload>-<model>.json)
+BENCHMARK_MODEL=your-model pnpm eval:compare
+BENCHMARK_MODEL=your-model pnpm eval:polyglot:compare
+BENCHMARK_MODEL=your-model pnpm eval:swebench:compare
 ```

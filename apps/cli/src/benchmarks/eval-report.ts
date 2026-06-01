@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { join } from "node:path";
 import type { EvalCaseResult, EvalRunReport } from "./benchmark-types.js";
 
 export interface EvalCliOptions {
@@ -55,6 +56,22 @@ export function parseEvalCliOptions(argv: string[]): EvalCliOptions {
   }
 
   return options;
+}
+
+export function resolveBaselinePath(input: {
+  root: string;
+  workloadSlug: string;
+  modelName: string;
+  comparePath?: string;
+}): string | undefined {
+  if (!input.comparePath) {
+    return undefined;
+  }
+  if (input.comparePath !== "auto") {
+    return input.comparePath;
+  }
+  const safeModel = input.modelName.replace(/[^a-z0-9_-]+/gi, "-");
+  return join(input.root, "benchmarks", "baselines", `${input.workloadSlug}-${safeModel}.json`);
 }
 
 export function resolveGitCommit(root: string): string | undefined {

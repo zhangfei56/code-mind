@@ -247,6 +247,21 @@ export async function gradeBenchmarkCase(input: {
     );
   }
 
+  if (graders.maxModifiedFiles !== undefined) {
+    const modifiedFiles = Array.isArray(input.result.metadata?.modifiedFiles)
+      ? input.result.metadata.modifiedFiles.filter(
+          (value): value is string => typeof value === "string",
+        )
+      : [];
+    checks.push(
+      check(
+        "maxModifiedFiles",
+        modifiedFiles.length <= graders.maxModifiedFiles,
+        `Modified files ${modifiedFiles.length} / max ${graders.maxModifiedFiles}`,
+      ),
+    );
+  }
+
   const passed = checks.every((entry) => entry.passed);
   const score =
     checks.length === 0 ? (passed ? 1 : 0) : Number((checks.filter((c) => c.passed).length / checks.length).toFixed(2));

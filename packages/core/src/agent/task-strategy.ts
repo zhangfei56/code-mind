@@ -2,6 +2,7 @@ import type { AgentMode, UserTask } from "@code-mind/shared";
 import type { ExplorationEvidence } from "@code-mind/shared";
 export type { ExplorationEvidence } from "@code-mind/shared";
 export { createEmptyExplorationEvidence } from "@code-mind/shared";
+import { needsScopeControl } from "./task-clarity.js";
 
 export interface LoopPolicy {
   mode: AgentMode;
@@ -97,18 +98,42 @@ const MODE_PROFILES: Record<
   },
 };
 
-export function createLoopPolicy(task: UserTask): LoopPolicy {
+export function createLoopPolicy(task: UserTask, workspaceRoot?: string): LoopPolicy {
   const profile = MODE_PROFILES[task.mode];
   const cappedExplore = Math.max(2, Math.min(4, Math.floor(task.maxSteps * 0.4)));
+  const scopeControl =
+    workspaceRoot !== undefined && needsScopeControl(task, workspaceRoot);
 
   return {
     mode: task.mode,
     ...profile,
+    forceNarrowingAfterBudget:
+      profile.forceNarrowingAfterBudget || scopeControl === true,
     explorationBudget:
       task.mode === "ask" || task.mode === "plan"
         ? cappedExplore
         : Math.max(profile.explorationBudget, cappedExplore),
   };
+}
+
+export function shouldGateFileMutations(params: {
+  task: UserTask;
+  workspaceRoot: string;
+  policy: LoopPolicy;
+  evidence: ExplorationEvidence;
+  modifiedFilesCount: number;
+}): boolean {
+  const { task, workspaceRoot, policy, evidence, modifiedFilesCount } = params;
+  if (policy.mode !== "edit" && policy.mode !== "agent") {
+    return false;
+  }
+  if (modifiedFilesCount > 0) {
+    return false;
+  }
+  if (!needsScopeControl(task, workspaceRoot)) {
+    return false;
+  }
+  return !hasEnoughExplorationEvidence(evidence, policy);
 }
 
 export function shouldEnterClosingTurn(params: {

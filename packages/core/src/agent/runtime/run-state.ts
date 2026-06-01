@@ -45,6 +45,8 @@ export interface ProgressState {
   lastContextTokens?: number;
   /** Model window size paired with lastContextTokens. */
   lastMaxContextTokens?: number;
+  /** Scope-control guidance injected once per run. */
+  scopeControlInjected?: boolean;
 }
 
 /** Exploration signals gathered from read/list/grep tool calls. */

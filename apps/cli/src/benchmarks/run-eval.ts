@@ -6,7 +6,7 @@ import { nowIso } from "@code-mind/shared";
 import { compareEvalReports, formatCompareReport } from "./compare-report.js";
 import type { EvalRunReport } from "./benchmark-types.js";
 import { loadWorkloadCases, runEvalCase } from "./eval-case-runner.js";
-import { buildEvalReport, parseEvalCliOptions, resolveGitCommit } from "./eval-report.js";
+import { buildEvalReport, parseEvalCliOptions, resolveBaselinePath, resolveGitCommit } from "./eval-report.js";
 
 async function main(): Promise<void> {
   const root = resolve(process.cwd());
@@ -82,7 +82,12 @@ async function main(): Promise<void> {
   }
 
   if (options.comparePath) {
-    const comparePath = resolve(root, options.comparePath);
+    const comparePath = resolve(root, resolveBaselinePath({
+      root,
+      workloadSlug,
+      modelName,
+      comparePath: options.comparePath,
+    }) ?? options.comparePath);
     const baseline = JSON.parse(await readFile(comparePath, "utf8")) as EvalRunReport;
     const delta = compareEvalReports(baseline, report);
     console.log("");

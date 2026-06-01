@@ -22,7 +22,7 @@
 
 | ID | 状态 | 任务 | 验收 |
 |----|------|------|------|
-| TOOL-06 / CTX-01 | [ ] | Repo Map Builder | `@code-mind/context` 注入 |
+| TOOL-06 / CTX-01 | [~] | Repo Map Builder | `@code-mind/context` 注入 |
 | CORE-07 | [~] | Pending writes 状态模型 | resume 可补偿 |
 | CORE-08 | [~] | Diff 展示产品化 | CLI `/diff` 增强 |
 | CORE-10 | [~] | Workspace 包与 pending writes 对齐 | |
@@ -32,7 +32,7 @@
 | CLI-06 | [ ] | `toolCallDurationMs` | tool finished 事件 |
 | CLI-07 | [ ] | Step 内 LLM 自由文本发现 | journal / activity |
 | HITL-03 | [ ] | 审批 edit | pause/resume + 审计 |
-| HITL-04 | [ ] | 审批 clarify | 注入 observation |
+| HITL-04 | [~] | 审批 clarify | 注入 observation |
 | API-01 | [~] | api-server Web UI 扩展 | plan 审批、session diff |
 | TEST-02 | [~] | API 测试 localhost 环境说明 | CI/README |
 
@@ -40,12 +40,18 @@
 
 | ID | 状态 | 任务 |
 |----|------|------|
-| TOOL-07 | [ ] | LSP 扩展（symbols/definition/references） |
+| TOOL-07 | [~] | LSP 扩展（symbols/definition/references） |
 | TOOL-08 | [ ] | 是否暴露独立 `run_tests` tool（决策） |
 | CORE-01 | [~] | Plan artifact 结构化解析 |
 | CORE-09 | [ ] | Session fork / 只读 replay |
-| CTX-02 | [~] | Embedding 能力召回 |
-| CAP-01 | [ ] | 低置信 skill HITL |
+| CTX-02 | [x] | 能力召回（skill 描述符 token cache，`skill-recall.ts`） |
+| CAP-01 | [x] | 低置信 skill HITL |
+| SKL-01 | [x] | SkillRunPolicy + `--skill` 排他（selector，非全文前缀） |
+| SKL-02 | [x] | `allowedTools` → tool schema 交集 |
+| SKL-03 | [x] | maxActive 打分截断 + 负向词 |
+| SKL-04 | [x] | `command.skill` 接线 |
+| SKL-05 | [x] | `read_skill` + 索引注入 |
+| SKL-06 | [x] | skill benchmark cases（单测 + fixture id） |
 | HITL-05 | [ ] | Web plan 审批面板 |
 | MCP-02~07 | [ ] | MCP resources/prompts/roots/elicitation/sampling/非 stdio |
 | OBS-01~03 | [~]/[ ] | replay-engine、cost trace、eval hooks |

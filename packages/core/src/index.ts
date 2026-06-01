@@ -2,6 +2,8 @@
 export {
   AgentLoopController,
   type PermissionPrompter,
+  type ClarifyPrompter,
+  type SkillConfirmPrompter,
 } from "./agent/runtime/agent-loop-controller.js";
 export {
   runAgentSession,
@@ -25,9 +27,20 @@ export {
   createLoopPolicy,
   isBroadRepoRootTask,
   shouldEnterClosingTurn,
+  shouldGateFileMutations,
   type ExplorationEvidence,
   type LoopPolicy,
 } from "./agent/task-strategy.js";
+export {
+  isVagueRepairTask,
+  needsScopeControl,
+  shouldRequestClarify,
+  buildScopeControlGuidance,
+  buildClarifyQuestion,
+  taskMentionsSpecificPath,
+  FILE_MUTATION_TOOL_NAMES,
+} from "./agent/task-clarity.js";
+export { resolveTaskClarityIfNeeded } from "./agent/task-clarity-resolution.js";
 
 /** L2 — Composition helpers (apps/tests; product loop assembly → `@code-mind/agent-composition`) */
 export {

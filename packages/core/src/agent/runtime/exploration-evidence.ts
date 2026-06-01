@@ -70,4 +70,31 @@ export function updateExplorationEvidence(
   if (toolCall.name === "grep" || toolCall.name === "glob") {
     markCandidateFileLocated(evidence);
   }
+
+  if (
+    toolCall.name === "lsp_symbols" ||
+    toolCall.name === "lsp_definition" ||
+    toolCall.name === "lsp_references"
+  ) {
+    const path = readToolPath(toolCall);
+    if (path) {
+      applyReadFileEvidence(evidence, path);
+    } else {
+      markCandidateFileLocated(evidence);
+    }
+  }
+
+  if (toolCall.name === "run_shell") {
+    const command =
+      typeof toolCall.arguments.command === "string" ? toolCall.arguments.command : "";
+    if (VERIFY_SHELL_COMMAND_PATTERN.test(command)) {
+      markVerificationCommandKnown(evidence);
+    }
+    if (/\.(ts|js|py|go|rs)\b/i.test(command) || /src\/|test/i.test(command)) {
+      markCandidateFileLocated(evidence);
+    }
+  }
 }
+
+const VERIFY_SHELL_COMMAND_PATTERN =
+  /\b(npm test|pnpm test|yarn test|node test|node \S+\.js|pytest|cargo test|go test|vitest|jest)\b/i;

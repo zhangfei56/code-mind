@@ -75,7 +75,9 @@ code-mind serve --port 3847        # → code-mind web start --port 3847
 | `code-mind mcp list/add` | MCP 服务器配置 |
 | `code-mind hooks list` | 列出 hooks |
 | `code-mind skills list/show` | Skill 发现 |
-| `code-mind skill run <name> [task]` | 带 skill 内容跑 agent |
+| （自动） | 任务匹配 skill；50–79 分 CLI 会询问是否启用 |
+| `read_skill` tool | Agent 按需读取 `.agent/skills/<name>/SKILL.md` |
+| `code-mind skill run <name> [task]` | 强制 skill + 全文 SKILL.md 前缀（调试/专用） |
 | `code-mind agent list` | 列出子 agent 定义 |
 | `code-mind plugin …` | 插件 install / list / enable / disable / remove（别名 `plug`） |
 | `code-mind web start` | 启动 HTTP API + Web UI |
@@ -104,7 +106,7 @@ code-mind serve --port 3847        # → code-mind web start --port 3847
 | `--trace` | | 显示 token/context 追踪细节（L3） | 关 |
 | `--plan` | | plan-first：先 plan 再 execute | 关 |
 | `--worktree` | | 在 git worktree 中执行 | 关 |
-| `--skill <name>` | | 任务前注入指定 skill | — |
+| `--skill <name>` | | 强制启用该 skill（selector 摘要，排他；不拼全文） | — |
 | `--auto` | | 将 `edit` 提升为 `agent` 模式 | 关 |
 
 ---
@@ -281,7 +283,7 @@ code-mind run "demo" --model local:llama3.2 --cwd .
 <project>/.agent/
   sessions/          # session 记录（manifest、summary、plan 等）
   skills/            # 自定义 skill
-  commands/          # 斜杠命令定义
+  commands/          # 斜杠命令（review.yaml 可含 skill: 绑定）
   settings.yaml      # MCP、扩展（由 mcp / plugin 命令维护）
 ```
 

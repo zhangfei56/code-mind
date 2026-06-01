@@ -16,5 +16,10 @@ export { parsePatch, type ParsedPatch } from "@code-mind/shared";
 export { GitManager } from "./services/git-manager.js";
 export { WorktreeManager } from "./services/worktree-manager.js";
 export { LspAdapter } from "./services/lsp-adapter.js";
+export {
+  getDocumentSymbols,
+  findDefinition,
+  findReferences,
+} from "./services/typescript-language-service.js";
 export { McpAdapter } from "./mcp/mcp-adapter.js";
 export * from "./mcp/mcp-adapter.js";

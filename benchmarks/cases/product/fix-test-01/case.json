@@ -8,6 +8,7 @@
     "verifyExitCode": 0,
     "fileContains": [{ "path": "src/math.ts", "pattern": "a \\+ b" }],
     "maxSteps": 12,
+    "maxModifiedFiles": 2,
     "forbiddenCompletion": ["stopped_by_limit"]
   },
   "source": "session_e228ca4b-0ee1-4516-9260-c8a69678c37e",

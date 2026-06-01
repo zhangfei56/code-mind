@@ -1,6 +1,8 @@
 import type { ExtensionRegistry } from "@code-mind/capabilities";
 import {
+  DEFAULT_SKILL_RUN_POLICY,
   injectCapabilityContextBlocks,
+  resolveSkillSelectorInput,
   selectModelCapabilities,
 } from "@code-mind/capabilities";
 import type {
@@ -8,10 +10,13 @@ import type {
   InternalMessage,
   RuntimeInput,
   SelectedCapabilities,
+  SkillRunPolicy,
 } from "@code-mind/shared";
 import { createId, nowIso } from "@code-mind/shared";
 import type { ToolRegistry } from "@code-mind/execution";
-import { shouldEnterClosingTurn, type LoopPolicy } from "../task-strategy.js";
+import { resolveProductPromptLocale } from "@code-mind/models";
+import { shouldEnterClosingTurn, shouldGateFileMutations, type LoopPolicy } from "../task-strategy.js";
+import { buildScopeControlGuidance, needsScopeControl } from "../task-clarity.js";
 import { getEffectiveMaxSteps } from "./run-state.js";
 import { setActivity } from "./run-facts.js";
 import type { RunState } from "./run-state.js";
@@ -29,6 +34,7 @@ export async function buildStepAssembly(
   deps: {
     getPromptAssembly: () => import("../kernel/ports.js").PromptAssemblyPort;
     extensionRegistry?: ExtensionRegistry;
+    skillRunPolicy?: SkillRunPolicy;
     toolRegistry: ToolRegistry;
     publish: (
       input: RuntimeInput | undefined,
@@ -81,9 +87,62 @@ export async function buildStepAssembly(
     ];
   }
 
+  const locale = resolveProductPromptLocale(
+    session.modelName,
+    typeof input.profile.metadata?.providerModel === "string"
+      ? input.profile.metadata.providerModel
+      : undefined,
+  );
+  if (
+    needsScopeControl(input.task, session.workspaceRoot) &&
+    !runState.progress.scopeControlInjected
+  ) {
+    runState.progress.scopeControlInjected = true;
+    context.messages = [
+      ...context.messages,
+      {
+        id: createId("msg"),
+        role: "system",
+        content: buildScopeControlGuidance(input.task, session.workspaceRoot, locale),
+        createdAt: nowIso(),
+      },
+    ];
+  }
+
+  const writeToolsGated = shouldGateFileMutations({
+    task: input.task,
+    workspaceRoot: session.workspaceRoot,
+    policy: strategy,
+    evidence: runState.exploration.evidence,
+    modifiedFilesCount: runState.progress.modifiedFiles.size,
+  });
+  if (writeToolsGated) {
+    context.messages = [
+      ...context.messages,
+      {
+        id: createId("msg"),
+        role: "system",
+        content:
+          locale === "zh"
+            ? "探索阶段：文件修改工具已暂时禁用。请先 list_dir / read_file / grep，并运行验证命令确认失败位置；满足探索证据后再改代码。"
+            : "Exploration phase: file mutation tools are temporarily disabled. Use list_dir, read_file, grep, and run verification first; edit only after the failure location is confirmed.",
+        createdAt: nowIso(),
+      },
+    ];
+  }
+
   const toolSchemaSelection = selectToolSchemasForModel(deps.toolRegistry, runState, {
     enterClosingTurn,
+    task: input.task,
+    workspaceRoot: session.workspaceRoot,
+    strategy,
   });
+  const skillSelector = resolveSkillSelectorInput(
+    deps.skillRunPolicy ?? DEFAULT_SKILL_RUN_POLICY,
+  );
+  const confirmedSkillNames = Array.isArray(input.task.metadata?.confirmedSkillNames)
+    ? input.task.metadata.confirmedSkillNames.map(String)
+    : undefined;
   const selectedCapabilities = selectModelCapabilities({
     capability: {
       taskText: input.task.text,
@@ -96,6 +155,10 @@ export async function buildStepAssembly(
         ...(plugin.skills === undefined ? {} : { skills: plugin.skills }),
       })),
       enterClosingTurn,
+      ...skillSelector,
+      ...(confirmedSkillNames === undefined || confirmedSkillNames.length === 0
+        ? {}
+        : { confirmedSkillNames }),
     },
     toolSelection: {
       tools: toolSchemaSelection.tools,

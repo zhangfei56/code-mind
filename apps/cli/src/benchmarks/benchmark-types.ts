@@ -17,6 +17,7 @@ export interface BenchmarkGraders {
   expectStatus?: AgentResultStatus | "any";
   forbiddenCompletion?: string[];
   requireVerificationPassed?: boolean;
+  maxModifiedFiles?: number;
 }
 
 export interface PolyglotRef {

@@ -6,6 +6,8 @@ import {
   asyncRunManager,
   createHttpPlanApprovalHandler,
   httpApprovalQueue,
+  httpClarifyQueue,
+  httpSkillConfirmQueue,
 } from "@code-mind/server-runtime";
 import { composeAgentLoop, buildCompactionRuntimeOverrides } from "@code-mind/agent-composition";
 import {
@@ -102,6 +104,12 @@ async function executeRun(
       cwd,
       { ...(options.abortSignal === undefined ? {} : { abortSignal: options.abortSignal }) },
     ),
+    clarifyPrompter: httpClarifyQueue.createPrompter({
+      ...(options.abortSignal === undefined ? {} : { abortSignal: options.abortSignal }),
+    }),
+    skillConfirmPrompter: httpSkillConfirmQueue.createPrompter({
+      ...(options.abortSignal === undefined ? {} : { abortSignal: options.abortSignal }),
+    }),
   });
 
   const publishEvent = createRunEventPublisher(options.runId);

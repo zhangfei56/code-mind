@@ -16,7 +16,7 @@ import { createRunScopedKernelPorts } from "./ports/index.js";
 import { createRunContext } from "@code-mind/observability";
 import type { AgentLoopRuntimeWiring } from "./runtime-wiring.js";
 
-export type { PermissionPrompter } from "./types.js";
+export type { PermissionPrompter, ClarifyPrompter, SkillConfirmPrompter } from "./types.js";
 
 export class AgentLoopController {
   private readonly wiring: AgentLoopRuntimeWiring;
@@ -122,7 +122,7 @@ export class AgentLoopController {
         normalizedInput,
         runState,
       );
-      const strategy = createLoopPolicy(session.task);
+      const strategy = createLoopPolicy(session.task, session.workspaceRoot);
       const stepRunner = createRunScopedStepRunner({
         runPorts,
         lifecycle: this.wiring.lifecycle,
@@ -133,6 +133,9 @@ export class AgentLoopController {
         ...(this.wiring.extensionRegistry === undefined
           ? {}
           : { extensionRegistry: this.wiring.extensionRegistry }),
+        ...(this.wiring.skillRunPolicy === undefined
+          ? {}
+          : { skillRunPolicy: this.wiring.skillRunPolicy }),
         ...(this.wiring.subagentManager === undefined
           ? {}
           : { subagentManager: this.wiring.subagentManager }),

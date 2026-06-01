@@ -15,8 +15,9 @@ import {
   gitStatusTool,
 } from "./git-tools.js";
 import { listDirTool } from "./list-dir.js";
-import { lspDiagnosticsTool } from "./lsp-tools.js";
+import { lspDiagnosticsTool, lspDefinitionTool, lspReferencesTool, lspSymbolsTool } from "./lsp-tools.js";
 import { readFileTool } from "./read-file.js";
+import { readSkillTool } from "./read-skill.js";
 import { runShellTool } from "./run-shell.js";
 import {
   worktreeCleanupTool,
@@ -28,6 +29,7 @@ import {
 export function registerDefaultTools(registry: ToolRegistry): void {
   registry.register(listDirTool);
   registry.register(readFileTool);
+  registry.register(readSkillTool);
   registry.register(globTool);
   registry.register(grepTool);
   registry.register(gitStatusTool);
@@ -37,6 +39,9 @@ export function registerDefaultTools(registry: ToolRegistry): void {
   registry.register(gitShowTool);
   registry.register(gitRestoreFileTool);
   registry.register(lspDiagnosticsTool);
+  registry.register(lspSymbolsTool);
+  registry.register(lspDefinitionTool);
+  registry.register(lspReferencesTool);
   registry.register(worktreeCreateTool);
   registry.register(worktreeStatusTool);
   registry.register(worktreeDiffTool);

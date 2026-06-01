@@ -10,16 +10,20 @@ import {
   createAgentLoopRuntimeWiring,
   createDefaultToolRegistry,
   type PermissionPrompter,
+  type ClarifyPrompter,
+  type SkillConfirmPrompter,
   type RuntimeDependencies,
 } from "@code-mind/core";
 import type { ToolRegistry } from "@code-mind/execution";
-import type { AgentProfile, ModelProvider } from "@code-mind/shared";
+import type { AgentProfile, ModelProvider, SkillRunPolicy } from "@code-mind/shared";
 import { mergeExtensionRuntimeDeps } from "./merge-extension-runtime-deps.js";
 
 export type { LoadedExtensions } from "@code-mind/capabilities";
 
 export interface ComposeAgentLoopOptions {
   permissionPrompter?: PermissionPrompter;
+  clarifyPrompter?: ClarifyPrompter;
+  skillConfirmPrompter?: SkillConfirmPrompter;
   model?: ModelProvider;
   profile?: AgentProfile;
   /** Partial runtime overrides merged after extensions + default deps (single merge point). */
@@ -27,6 +31,7 @@ export interface ComposeAgentLoopOptions {
   /** Skip `loadExtensions` when CLI/API already loaded workspace extensions into `toolRegistry`. */
   extensions?: LoadedExtensions;
   toolRegistry?: ToolRegistry;
+  skillRunPolicy?: SkillRunPolicy;
 }
 
 export interface ComposedAgentLoop {

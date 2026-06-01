@@ -1,4 +1,4 @@
-import type { ContextManager } from "@code-mind/shared";
+import type { ContextManager, SkillRunPolicy } from "@code-mind/shared";
 import type { ExtensionRegistry, SubagentManager } from "@code-mind/capabilities";
 import type { ToolRegistry } from "@code-mind/execution";
 import type { SessionStorePort } from "./ports/session-store-port.js";
@@ -30,6 +30,7 @@ export interface AgentLoopRuntimeWiring {
   staticPorts: StaticRuntimePorts;
   toolRegistry: ToolRegistry;
   extensionRegistry?: ExtensionRegistry;
+  skillRunPolicy?: SkillRunPolicy;
   subagentManager?: SubagentManager;
 }
 
@@ -70,6 +71,18 @@ export function createAgentLoopRuntimeWiring(
     lifecycle,
     setSessionStatus,
     publish: (input, event) => publish(input, event),
+    ...(dependencies.clarifyPrompter === undefined
+      ? {}
+      : { clarifyPrompter: dependencies.clarifyPrompter }),
+    ...(dependencies.skillConfirmPrompter === undefined
+      ? {}
+      : { skillConfirmPrompter: dependencies.skillConfirmPrompter }),
+    ...(dependencies.extensionRegistry === undefined
+      ? {}
+      : { extensionRegistry: dependencies.extensionRegistry }),
+    ...(dependencies.skillRunPolicy === undefined
+      ? {}
+      : { skillRunPolicy: dependencies.skillRunPolicy }),
   };
 
   return {
@@ -83,6 +96,7 @@ export function createAgentLoopRuntimeWiring(
     ...(deps.extensionRegistry === undefined
       ? {}
       : { extensionRegistry: deps.extensionRegistry }),
+    ...(deps.skillRunPolicy === undefined ? {} : { skillRunPolicy: deps.skillRunPolicy }),
     ...(deps.subagentManager === undefined
       ? {}
       : { subagentManager: deps.subagentManager }),

@@ -43,6 +43,8 @@ export type SessionRuntimeStatus =
   | "running"
   | "retrying"
   | "awaiting_approval"
+  | "awaiting_clarification"
+  | "awaiting_skill_confirmation"
   | "compacting";
 
 export type SessionStatus = SessionRuntimeStatus | AgentResultStatus;
@@ -263,6 +265,8 @@ export interface ContextBuildInput {
 export interface RunFactsSnapshot {
   mode: AgentMode;
   atWorkspaceRoot: boolean;
+  /** Vague or repo-root repair tasks that require scope control. */
+  scopeControlActive?: boolean;
 }
 
 export interface ContextSnapshot {
@@ -576,7 +580,8 @@ export type CapabilitySelectionTrigger =
   | "file_type"
   | "runtime_mode"
   | "plan_mode"
-  | "closing_turn";
+  | "closing_turn"
+  | "exploration_gate";
 
 export type CapabilityAuditTargetKind =
   | "skill"
@@ -593,10 +598,20 @@ export interface CapabilityAuditReason {
   reason: string;
 }
 
+export interface PendingSkillEntry {
+  name: string;
+  description: string;
+  score: number;
+  trigger: CapabilitySelectionTrigger;
+  reason: string;
+}
+
 export interface SelectedSkillEntry {
   name: string;
   description: string;
   contextSnippet: string;
+  /** Snippet for high-confidence skills; index prompts `read_skill` otherwise. */
+  contextStyle?: "snippet" | "index";
   allowedTools?: string[];
 }
 
@@ -623,6 +638,23 @@ export interface CapabilitySelectionResult {
 /** Full selector output consumed by prompt assembly and model request. */
 export interface SelectedCapabilities extends CapabilitySelectionResult {
   toolSchemas: ToolSchema[];
+}
+
+/** How the runtime selects skills for a run (default: auto-match from user task). */
+export type SkillRunPolicyMode = "auto" | "force";
+
+export interface SkillRunPolicy {
+  mode: SkillRunPolicyMode;
+  /** CLI `--skill` / `skill run`: only these skills may activate (force mode). */
+  forceNames?: string[];
+  /** From `settings.extensions.skills.enabled`; empty/omit = all skills eligible. */
+  allowlist?: string[];
+  /** Max skills injected per step (auto default 2, force default = forceNames length). */
+  maxActive?: number;
+  /** When true, auto selector does not add skills beyond `forceNames`. */
+  exclusiveForce?: boolean;
+  /** `skill run` only: prepend full SKILL.md to task text. */
+  injectFullContent?: boolean;
 }
 
 export interface ExtensionSettings {

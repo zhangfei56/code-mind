@@ -1,5 +1,7 @@
 export { buildCapabilities } from "./capabilities.js";
 export {
+  applySkillToolConstraints,
+  collectPendingSkills,
   injectCapabilityContextBlocks,
   mergeSelectedCapabilities,
   selectModelCapabilities,
@@ -7,6 +9,15 @@ export {
   type CapabilitySelectorInput,
   type ToolSchemaSelectionInput,
 } from "./capability-selector.js";
+export { recallSimilarity, getSkillRecallTokens } from "./skill-recall.js";
+export {
+  DEFAULT_SKILL_RUN_POLICY,
+  mergeSkillRunPolicy,
+  resolveRunSkillPolicy,
+  resolveSkillSelectorInput,
+  skillPolicyFromSettings,
+  type RunSkillPolicyResolution,
+} from "./skill-policy.js";
 export { CiBot } from "./ci-bot.js";
 export { CommandSystem } from "./command-system.js";
 export { HookSystem } from "./hook-system.js";

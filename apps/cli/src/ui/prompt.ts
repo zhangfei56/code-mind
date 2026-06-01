@@ -112,3 +112,86 @@ export async function confirmAction(
     rl.close();
   }
 }
+
+export interface ClarifyPromptOptions {
+  output?: NodeJS.WriteStream;
+  composer?: TerminalComposer;
+}
+
+export interface SkillConfirmPromptOptions {
+  output?: NodeJS.WriteStream;
+  composer?: TerminalComposer;
+  locale?: "en" | "zh";
+}
+
+export async function promptSkillConfirm(
+  skillRequest: {
+    skillName: string;
+    skillDescription: string;
+    score: number;
+    reason: string;
+  },
+  options: SkillConfirmPromptOptions = {},
+): Promise<boolean> {
+  const output = options.output ?? defaultApprovalOutput;
+  const composer = options.composer;
+  const ttyOutput = composer?.output ?? output;
+  if (!process.stdin.isTTY || !ttyOutput.isTTY) {
+    return false;
+  }
+
+  const locale = options.locale ?? "en";
+  const question =
+    locale === "zh"
+      ? `是否启用 skill "${skillRequest.skillName}"？（匹配分 ${skillRequest.score}）\n${skillRequest.skillDescription}\n${skillRequest.reason} [y/N]`
+      : `Enable skill "${skillRequest.skillName}"? (score ${skillRequest.score})\n${skillRequest.skillDescription}\n${skillRequest.reason} [y/N]`;
+  const promptLine =
+    locale === "zh"
+      ? `${theme.cyan("skill", ttyOutput)} ${theme.dim("›", ttyOutput)} [y/N] `
+      : `${theme.cyan("skill", ttyOutput)} ${theme.dim("›", ttyOutput)} [y/N] `;
+
+  if (composer) {
+    composer.writeAbove(`${theme.cyan("skill", ttyOutput)} ${theme.dim("›", ttyOutput)} ${question}\n`);
+    composer.setPrompt(promptLine);
+    const answer = await composer.ask(promptLine);
+    return /^y(es)?$/i.test(answer.trim());
+  }
+
+  output.write(`${question}\n`);
+  const rl = createInterface({ input, output: ttyOutput });
+  try {
+    const answer = await rl.question(promptLine);
+    return /^y(es)?$/i.test(answer.trim());
+  } finally {
+    rl.close();
+  }
+}
+
+export async function promptClarifyAnswer(
+  question: string,
+  options: ClarifyPromptOptions = {},
+): Promise<string> {
+  const output = options.output ?? defaultApprovalOutput;
+  const composer = options.composer;
+  const ttyOutput = composer?.output ?? output;
+  if (!process.stdin.isTTY || !ttyOutput.isTTY) {
+    return "";
+  }
+
+  const header = `${theme.cyan("clarify", ttyOutput)} ${theme.dim("›", ttyOutput)} ${question}\n`;
+  const promptLine = `${theme.cyan("clarify", ttyOutput)} ${theme.dim("›", ttyOutput)} `;
+
+  if (composer) {
+    composer.writeAbove(header);
+    composer.setPrompt(promptLine);
+    return composer.ask(promptLine);
+  }
+
+  output.write(header);
+  const rl = createInterface({ input, output: ttyOutput });
+  try {
+    return await rl.question(promptLine);
+  } finally {
+    rl.close();
+  }
+}

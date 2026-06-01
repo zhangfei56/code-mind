@@ -1,0 +1,10 @@
+{
+  "id": "product-skill-select-01",
+  "mode": "ask",
+  "goal": "Documented fixture for skill auto-match regression (unit-tested via capability-selector).",
+  "maxSteps": 1,
+  "graders": {
+    "maxSteps": 1
+  },
+  "tags": ["product", "skill", "selector"]
+}

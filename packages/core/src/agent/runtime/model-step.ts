@@ -3,6 +3,7 @@ import type {
   AgentResult,
   AgentSession,
   RuntimeInput,
+  SkillRunPolicy,
   ToolCall,
   InternalMessage,
 } from "@code-mind/shared";
@@ -53,6 +54,7 @@ export interface ModelStepDeps {
   getModelPort: (model: RuntimeInput["model"]) => RuntimeModelPort;
   review: ReviewPort;
   extensionRegistry?: ExtensionRegistry;
+  skillRunPolicy?: SkillRunPolicy;
   toolRegistry: ToolRegistry;
   lifecycle: SessionLifecycleDeps;
   resultBuilder: ResultBuilder;

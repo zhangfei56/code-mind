@@ -26,6 +26,8 @@ import { renderPlanBlock, renderTaskResult, renderVerification } from "../ui/ren
 import { createProgressPrinter } from "../ui/progress-printer.js";
 import { buildRunHeaderDetails } from "../ui/header-details.js";
 import { CliPermissionPrompter } from "../interactive/cli-permission-prompter.js";
+import { CliClarifyPrompter } from "../interactive/cli-clarify-prompter.js";
+import { CliSkillConfirmPrompter } from "../interactive/cli-skill-confirm-prompter.js";
 import { TerminalComposer } from "../ui/terminal-composer.js";
 import { theme } from "../ui/theme.js";
 import {
@@ -46,6 +48,8 @@ import {
   CiBot,
   buildCapabilities,
   loadExtensionSettings,
+  mergeSkillRunPolicy,
+  resolveRunSkillPolicy,
   resolveSkillMode,
   saveExtensionSettings,
 } from "@code-mind/capabilities";
@@ -394,6 +398,13 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
       profile,
       toolRegistry,
       extensions,
+      skillRunPolicy: mergeSkillRunPolicy(extensions.skillRunPolicy, {
+        mode: "force",
+        forceNames: [args.name],
+        maxActive: 1,
+        exclusiveForce: true,
+        injectFullContent: true,
+      }),
       runtime: buildCompactionRuntimeOverrides(provider.name, config),
     });
     const session = await runAgentSession({
@@ -539,25 +550,37 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
   const command = runArgs.task.startsWith("/")
     ? extensions.commandSystem.get(runArgs.task)
     : undefined;
-  const selectedSkill = runArgs.skill ? extensions.skillEngine.get(runArgs.skill) : undefined;
+  const skillPolicyResolution = resolveRunSkillPolicy(extensions.skillRunPolicy, {
+    ...(runArgs.skill === undefined ? {} : { cliSkillName: runArgs.skill }),
+    ...(command?.skill === undefined ? {} : { commandSkillName: command.skill }),
+    lookupSkill: (name) => extensions.skillEngine.get(name),
+  });
+  if ("error" in skillPolicyResolution) {
+    throw new ValidationError(skillPolicyResolution.error);
+  }
+  const skillRunPolicy =
+    skillPolicyResolution.forceNames.length > 0
+      ? skillPolicyResolution.policy
+      : undefined;
+  const primaryForcedSkill =
+    skillPolicyResolution.forceNames.length > 0
+      ? extensions.skillEngine.get(skillPolicyResolution.forceNames[0]!)
+      : undefined;
+  let resolvedMode = task.mode;
+  if (command?.mode !== undefined && !runArgs.modeExplicit) {
+    resolvedMode = command.mode;
+  }
+  if (primaryForcedSkill && !runArgs.modeExplicit) {
+    resolvedMode = resolveSkillMode(primaryForcedSkill, resolvedMode, false);
+  }
   const finalTask = command
     ? {
         ...task,
         text: `${command.content}\n\n${task.text}`,
-        mode:
-          runArgs.modeExplicit || command.mode === undefined
-            ? task.mode
-            : command.mode,
+        mode: resolvedMode,
       }
-    : selectedSkill
-      ? {
-          ...task,
-          text: `${selectedSkill.content}\n\n${task.text}`,
-          mode:
-            runArgs.modeExplicit || selectedSkill.allowedModes?.[0] === undefined
-              ? task.mode
-              : selectedSkill.allowedModes[0],
-        }
+    : primaryForcedSkill
+      ? { ...task, mode: resolvedMode }
       : task;
   const config = loadConfigForModel(resolved.model);
   cliExecuteLogDebug("Resolved run configuration.", {
@@ -610,15 +633,48 @@ export async function executeCliArgs(args: CliArgs): Promise<number> {
         },
       })
     : undefined;
+  const useInteractiveClarify =
+    useInteractiveApproval && (finalTask.mode === "edit" || finalTask.mode === "agent");
+  const cliClarifyPrompter = useInteractiveClarify
+    ? new CliClarifyPrompter({
+        ...(terminalComposer === undefined ? {} : { composer: terminalComposer }),
+        onBeforePrompt: () => {
+          printer.pauseForInput();
+        },
+        onAfterPrompt: () => {
+          terminalComposer?.attachPromptOnly(`${theme.dim("agent running")} `);
+        },
+      })
+    : undefined;
+  const useInteractiveSkillConfirm =
+    useInteractiveApproval &&
+    skillRunPolicy === undefined &&
+    (finalTask.mode === "edit" || finalTask.mode === "agent");
+  const cliSkillConfirmPrompter = useInteractiveSkillConfirm
+    ? new CliSkillConfirmPrompter({
+        ...(terminalComposer === undefined ? {} : { composer: terminalComposer }),
+        onBeforePrompt: () => {
+          printer.pauseForInput();
+        },
+        onAfterPrompt: () => {
+          terminalComposer?.attachPromptOnly(`${theme.dim("agent running")} `);
+        },
+      })
+    : undefined;
   const { loop } = await composeAgentLoop(workspaceRoot, {
     model: provider,
     profile,
     toolRegistry,
     extensions,
+    ...(skillRunPolicy === undefined ? {} : { skillRunPolicy }),
     runtime: buildCompactionRuntimeOverrides(provider.name, config),
     ...(cliPermissionPrompter === undefined
       ? {}
       : { permissionPrompter: cliPermissionPrompter }),
+    ...(cliClarifyPrompter === undefined ? {} : { clarifyPrompter: cliClarifyPrompter }),
+    ...(cliSkillConfirmPrompter === undefined
+      ? {}
+      : { skillConfirmPrompter: cliSkillConfirmPrompter }),
   });
   const session = await runAgentSession({
     task: finalTask,

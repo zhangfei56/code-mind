@@ -4,15 +4,20 @@ import type {
   CapabilityContextBlock,
   CapabilitySelectionResult,
   CapabilitySelectionTrigger,
+  PendingSkillEntry,
   SelectedCapabilities,
   SelectedPluginEntry,
   SelectedSkillEntry,
   SkillDefinition,
   ToolSchema,
 } from "@code-mind/shared";
+import { recallSimilarity } from "./skill-recall.js";
 
 const HARD_ENABLE_THRESHOLD = 80;
 const SOFT_ENABLE_THRESHOLD = 50;
+/** Auto-matched skills more than this far below the top score are dropped. */
+const SCORE_GAP_THRESHOLD = 20;
+const NEGATIVE_PENALTY = 45;
 const WORKFLOW_VERBS = [
   "screenshot",
   "capture",
@@ -40,6 +45,13 @@ export interface CapabilitySelectorInput {
   plugins: Array<{ name: string; description: string; enabled?: boolean; skills?: string[] }>;
   enabledSkillNames?: string[];
   enabledPluginNames?: string[];
+  /** Always enable these skills (e.g. `--skill`); scored as explicit. */
+  forceSkillNames?: string[];
+  maxActive?: number;
+  /** When true, skip auto-matched skills and plugin-driven skill activation. */
+  exclusiveForce?: boolean;
+  /** User-confirmed pending skills from session init (CAP-01). */
+  confirmedSkillNames?: string[];
   enterClosingTurn?: boolean;
 }
 
@@ -145,6 +157,26 @@ function extractSkillContextSnippet(skill: SkillDefinition, maxChars = 480): str
   return combined.length <= maxChars ? combined : `${combined.slice(0, maxChars - 3)}...`;
 }
 
+function isCodeRepairTask(taskText: string): boolean {
+  return /fix|bug|refactor|patch|test\s+fail|failing\s+tests?|单元测试|修复|改错/i.test(taskText);
+}
+
+function isSpecializedProductSkill(skill: SkillDefinition): boolean {
+  const haystack = `${skill.name} ${skill.description}`.toLowerCase();
+  return /\b(ppt|presentation|slide|browser|screenshot|visual|pdf|幻灯片)\b/.test(haystack);
+}
+
+function applyNegativeDomainPenalty(
+  taskText: string,
+  skill: SkillDefinition,
+  score: number,
+): number {
+  if (!isCodeRepairTask(taskText) || !isSpecializedProductSkill(skill)) {
+    return score;
+  }
+  return Math.max(0, score - NEGATIVE_PENALTY);
+}
+
 function scoreSkill(
   taskText: string,
   skill: SkillDefinition,
@@ -157,7 +189,7 @@ function scoreSkill(
     };
   }
 
-  const fileScore = fileTypeMatch(taskText, skill);
+  const fileScore = applyNegativeDomainPenalty(taskText, skill, fileTypeMatch(taskText, skill));
   if (fileScore >= HARD_ENABLE_THRESHOLD) {
     return {
       score: fileScore,
@@ -166,7 +198,11 @@ function scoreSkill(
     };
   }
 
-  const workflowScore = workflowVerbMatch(taskText, skill);
+  const workflowScore = applyNegativeDomainPenalty(
+    taskText,
+    skill,
+    workflowVerbMatch(taskText, skill),
+  );
   if (workflowScore >= SOFT_ENABLE_THRESHOLD) {
     return {
       score: workflowScore,
@@ -175,7 +211,14 @@ function scoreSkill(
     };
   }
 
-  const semanticScore = semanticSimilarity(taskText, `${skill.name} ${skill.description}`);
+  const semanticScore = applyNegativeDomainPenalty(
+    taskText,
+    skill,
+    Math.max(
+      semanticSimilarity(taskText, `${skill.name} ${skill.description}`),
+      recallSimilarity(taskText, skill),
+    ),
+  );
   if (semanticScore >= 30) {
     return {
       score: semanticScore,
@@ -210,34 +253,225 @@ function isPluginEnabled(
   return enabledPluginNames.includes(plugin.name);
 }
 
-function shouldEnableSkill(
-  score: number,
-  trigger: CapabilitySelectionTrigger,
-): boolean {
-  if (score >= HARD_ENABLE_THRESHOLD) {
-    return true;
-  }
-  return score >= SOFT_ENABLE_THRESHOLD && (trigger === "workflow" || trigger === "semantic");
+function shouldEnableSkill(score: number): boolean {
+  return score >= HARD_ENABLE_THRESHOLD;
 }
 
-function buildSkillEntry(skill: SkillDefinition): SelectedSkillEntry {
+function isPendingSkill(score: number, trigger: CapabilitySelectionTrigger): boolean {
+  if (score < SOFT_ENABLE_THRESHOLD || score >= HARD_ENABLE_THRESHOLD) {
+    return false;
+  }
+  return trigger === "semantic" || trigger === "workflow";
+}
+
+function buildSkillEntry(
+  skill: SkillDefinition,
+  contextStyle: "snippet" | "index",
+): SelectedSkillEntry {
   return {
     name: skill.name,
     description: skill.description,
-    contextSnippet: extractSkillContextSnippet(skill),
+    contextStyle,
+    contextSnippet:
+      contextStyle === "snippet" ? extractSkillContextSnippet(skill) : "",
     ...(skill.tools === undefined ? {} : { allowedTools: skill.tools }),
   };
 }
 
 function buildSkillContextBlock(skill: SelectedSkillEntry): CapabilityContextBlock {
+  const lines =
+    skill.contextStyle === "index"
+      ? [
+          `Available skill: ${skill.name}`,
+          skill.description,
+          "Load full instructions with the read_skill tool before following this workflow.",
+        ]
+      : [
+          `Active skill: ${skill.name}`,
+          skill.description,
+          skill.contextSnippet,
+        ];
   return {
     source: `skill:${skill.name}`,
     kind: "skill",
-    content: [
-      `Active skill: ${skill.name}`,
-      skill.description,
-      skill.contextSnippet,
-    ].join("\n"),
+    content: lines.join("\n"),
+  };
+}
+
+export function collectPendingSkills(input: CapabilitySelectorInput): PendingSkillEntry[] {
+  if (input.enterClosingTurn || input.exclusiveForce === true) {
+    return [];
+  }
+
+  const pending: PendingSkillEntry[] = [];
+  const forceNames = new Set(input.forceSkillNames ?? []);
+  const confirmedNames = new Set(input.confirmedSkillNames ?? []);
+
+  for (const skill of input.skills) {
+    if (forceNames.has(skill.name) || confirmedNames.has(skill.name)) {
+      continue;
+    }
+    if (!isSkillEnabled(skill.name, input.enabledSkillNames)) {
+      continue;
+    }
+    if (!skillAllowedForMode(skill, input.mode)) {
+      continue;
+    }
+
+    const scored = scoreSkill(input.taskText, skill);
+    if (!scored || shouldEnableSkill(scored.score) || !isPendingSkill(scored.score, scored.trigger)) {
+      continue;
+    }
+
+    pending.push({
+      name: skill.name,
+      description: skill.description,
+      score: scored.score,
+      trigger: scored.trigger,
+      reason: scored.reason,
+    });
+  }
+
+  return pending.sort((left, right) => right.score - left.score);
+}
+
+const TRIGGER_PRIORITY: CapabilitySelectionTrigger[] = [
+  "explicit",
+  "file_type",
+  "workflow",
+  "semantic",
+  "runtime_mode",
+];
+
+function scorePriority(trigger: CapabilitySelectionTrigger): number {
+  const index = TRIGGER_PRIORITY.indexOf(trigger);
+  return index === -1 ? 0 : TRIGGER_PRIORITY.length - index;
+}
+
+function skillAuditScore(
+  auditReasons: CapabilityAuditReason[],
+  skillName: string,
+): number {
+  return (
+    auditReasons.find(
+      (entry) => entry.targetKind === "skill" && entry.target === skillName,
+    )?.score ?? 0
+  );
+}
+
+function applyScoreGapFilter(
+  selectedSkills: Map<string, SelectedSkillEntry>,
+  auditReasons: CapabilityAuditReason[],
+  forceNames: Set<string>,
+): void {
+  const autoMatched = [...selectedSkills.keys()].filter((name) => !forceNames.has(name));
+  if (autoMatched.length <= 1) {
+    return;
+  }
+
+  const topScore = Math.max(...autoMatched.map((name) => skillAuditScore(auditReasons, name)));
+  for (const name of autoMatched) {
+    const score = skillAuditScore(auditReasons, name);
+    if (topScore - score >= SCORE_GAP_THRESHOLD) {
+      selectedSkills.delete(name);
+      auditReasons.push({
+        trigger: "runtime_mode",
+        target: name,
+        targetKind: "skill",
+        reason: `Skill "${name}" dropped: score ${score} is ${SCORE_GAP_THRESHOLD}+ below top (${topScore}).`,
+      });
+    }
+  }
+}
+
+function truncateSelectedSkills(
+  selectedSkills: Map<string, SelectedSkillEntry>,
+  auditReasons: CapabilityAuditReason[],
+  maxActive: number,
+): void {
+  if (selectedSkills.size <= maxActive) {
+    return;
+  }
+
+  const ranked = [...selectedSkills.keys()]
+    .map((name) => {
+      const reason = auditReasons.find(
+        (entry) => entry.targetKind === "skill" && entry.target === name,
+      );
+      return {
+        name,
+        score: reason?.score ?? 0,
+        trigger: reason?.trigger ?? ("semantic" as CapabilitySelectionTrigger),
+      };
+    })
+    .sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score;
+      }
+      return scorePriority(right.trigger) - scorePriority(left.trigger);
+    });
+
+  for (const entry of ranked.slice(maxActive)) {
+    selectedSkills.delete(entry.name);
+    auditReasons.push({
+      trigger: "runtime_mode",
+      target: entry.name,
+      targetKind: "skill",
+      reason: `Skill "${entry.name}" dropped: maxActive=${maxActive} exceeded.`,
+    });
+  }
+}
+
+export function applySkillToolConstraints(
+  capabilities: SelectedCapabilities,
+): SelectedCapabilities {
+  const skillsWithTools = capabilities.skills.filter(
+    (skill) => skill.allowedTools !== undefined && skill.allowedTools.length > 0,
+  );
+  if (skillsWithTools.length === 0) {
+    return capabilities;
+  }
+
+  let allowed = new Set(skillsWithTools[0]!.allowedTools);
+  for (const skill of skillsWithTools.slice(1)) {
+    const next = new Set<string>();
+    for (const toolName of skill.allowedTools ?? []) {
+      if (allowed.has(toolName)) {
+        next.add(toolName);
+      }
+    }
+    allowed = next;
+  }
+
+  if (allowed.size === 0) {
+    return {
+      ...capabilities,
+      auditReasons: [
+        ...capabilities.auditReasons,
+        {
+          trigger: "runtime_mode",
+          target: "tool_schemas",
+          targetKind: "tool",
+          reason:
+            "Active skills declare incompatible allowedTools; keeping mode-default tool schemas.",
+        },
+      ],
+    };
+  }
+
+  const filtered = capabilities.toolSchemas.filter((schema) => allowed.has(schema.name));
+  return {
+    ...capabilities,
+    toolSchemas: filtered,
+    auditReasons: [
+      ...capabilities.auditReasons,
+      {
+        trigger: "runtime_mode",
+        target: "tool_schemas",
+        targetKind: "tool",
+        reason: `Tool schemas restricted to skill allowedTools: ${[...allowed].join(", ")}.`,
+      },
+    ],
   };
 }
 
@@ -262,9 +496,18 @@ export function selectCapabilities(input: CapabilitySelectorInput): CapabilitySe
   const auditReasons: CapabilityAuditReason[] = [];
   const selectedSkills = new Map<string, SelectedSkillEntry>();
   const selectedPlugins = new Map<string, SelectedPluginEntry>();
+  const maxActive = input.maxActive ?? 2;
+  const exclusiveForce = input.exclusiveForce === true;
 
-  for (const skill of input.skills) {
-    if (!isSkillEnabled(skill.name, input.enabledSkillNames)) {
+  for (const forceName of input.forceSkillNames ?? []) {
+    const skill = input.skills.find((item) => item.name === forceName);
+    if (!skill) {
+      auditReasons.push({
+        trigger: "explicit",
+        target: forceName,
+        targetKind: "skill",
+        reason: `Forced skill "${forceName}" is not registered.`,
+      });
       continue;
     }
     if (!skillAllowedForMode(skill, input.mode)) {
@@ -272,24 +515,86 @@ export function selectCapabilities(input: CapabilitySelectorInput): CapabilitySe
         trigger: "runtime_mode",
         target: skill.name,
         targetKind: "skill",
-        reason: `Skill "${skill.name}" is not allowed in mode "${input.mode}".`,
+        reason: `Forced skill "${skill.name}" is not allowed in mode "${input.mode}".`,
       });
       continue;
     }
-
-    const scored = scoreSkill(input.taskText, skill);
-    if (!scored || !shouldEnableSkill(scored.score, scored.trigger)) {
-      continue;
-    }
-
-    selectedSkills.set(skill.name, buildSkillEntry(skill));
+    selectedSkills.set(skill.name, buildSkillEntry(skill, "snippet"));
     auditReasons.push({
-      trigger: scored.trigger,
+      trigger: "explicit",
       target: skill.name,
       targetKind: "skill",
-      score: scored.score,
-      reason: scored.reason,
+      score: 100,
+      reason: `Skill "${skill.name}" forced via run policy.`,
     });
+  }
+
+  for (const confirmedName of input.confirmedSkillNames ?? []) {
+    if (selectedSkills.has(confirmedName)) {
+      continue;
+    }
+    const skill = input.skills.find((item) => item.name === confirmedName);
+    if (!skill || !skillAllowedForMode(skill, input.mode)) {
+      continue;
+    }
+    selectedSkills.set(skill.name, buildSkillEntry(skill, "snippet"));
+    auditReasons.push({
+      trigger: "explicit",
+      target: skill.name,
+      targetKind: "skill",
+      score: 100,
+      reason: `Skill "${skill.name}" confirmed by user.`,
+    });
+  }
+
+  const forcedNames = new Set(input.forceSkillNames ?? []);
+
+  if (!exclusiveForce) {
+    for (const skill of input.skills) {
+      if (selectedSkills.has(skill.name)) {
+        continue;
+      }
+      if (!isSkillEnabled(skill.name, input.enabledSkillNames)) {
+        continue;
+      }
+      if (!skillAllowedForMode(skill, input.mode)) {
+        auditReasons.push({
+          trigger: "runtime_mode",
+          target: skill.name,
+          targetKind: "skill",
+          reason: `Skill "${skill.name}" is not allowed in mode "${input.mode}".`,
+        });
+        continue;
+      }
+
+      const scored = scoreSkill(input.taskText, skill);
+      if (!scored || !shouldEnableSkill(scored.score)) {
+        continue;
+      }
+
+      selectedSkills.set(skill.name, buildSkillEntry(skill, "snippet"));
+      auditReasons.push({
+        trigger: scored.trigger,
+        target: skill.name,
+        targetKind: "skill",
+        score: scored.score,
+        reason: scored.reason,
+      });
+    }
+
+    applyScoreGapFilter(selectedSkills, auditReasons, forcedNames);
+  }
+
+  if (exclusiveForce) {
+    const skills = [...selectedSkills.values()];
+    const plugins: SelectedPluginEntry[] = [];
+    return {
+      skills,
+      plugins,
+      contextBlocks: skills.map((skill) => buildSkillContextBlock(skill)),
+      modePolicies: [],
+      auditReasons,
+    };
   }
 
   for (const plugin of input.plugins) {
@@ -340,7 +645,7 @@ export function selectCapabilities(input: CapabilitySelectorInput): CapabilitySe
       if (!skillAllowedForMode(skill, input.mode)) {
         continue;
       }
-      selectedSkills.set(skill.name, buildSkillEntry(skill));
+      selectedSkills.set(skill.name, buildSkillEntry(skill, "index"));
       auditReasons.push({
         trigger: "workflow",
         target: skill.name,
@@ -349,6 +654,8 @@ export function selectCapabilities(input: CapabilitySelectorInput): CapabilitySe
       });
     }
   }
+
+  truncateSelectedSkills(selectedSkills, auditReasons, maxActive);
 
   const skills = [...selectedSkills.values()];
   const plugins = [...selectedPlugins.values()];
@@ -367,9 +674,11 @@ export function selectModelCapabilities(input: {
   capability: CapabilitySelectorInput;
   toolSelection: ToolSchemaSelectionInput;
 }): SelectedCapabilities {
-  return mergeSelectedCapabilities(
-    selectCapabilities(input.capability),
-    input.toolSelection,
+  return applySkillToolConstraints(
+    mergeSelectedCapabilities(
+      selectCapabilities(input.capability),
+      input.toolSelection,
+    ),
   );
 }
 

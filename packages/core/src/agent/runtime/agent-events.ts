@@ -271,6 +271,50 @@ export function approvalResolvedEvent(input: {
   };
 }
 
+export function clarifyRequestedEvent(input: {
+  clarifyId: string;
+  question: string;
+  taskText: string;
+}): AgentEventInput {
+  return {
+    kind: "clarify.requested",
+    payload: input,
+  };
+}
+
+export function clarifyResolvedEvent(input: {
+  clarifyId: string;
+  answer: string;
+  skipped?: boolean;
+}): AgentEventInput {
+  return {
+    kind: "clarify.resolved",
+    payload: input,
+  };
+}
+
+export function skillConfirmRequestedEvent(input: {
+  confirmId: string;
+  pending: Array<{ name: string; score: number; reason: string }>;
+  taskText: string;
+}): AgentEventInput {
+  return {
+    kind: "skill.confirm.requested",
+    payload: input,
+  };
+}
+
+export function skillConfirmResolvedEvent(input: {
+  confirmId: string;
+  confirmed: string[];
+  declined: string[];
+}): AgentEventInput {
+  return {
+    kind: "skill.confirm.resolved",
+    payload: input,
+  };
+}
+
 export function planEnteredEvent(preMode: AgentMode, draftPath: string): AgentEventInput {
   return { kind: "plan.entered", payload: { preMode, draftPath } };
 }

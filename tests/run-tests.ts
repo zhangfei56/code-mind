@@ -4,6 +4,9 @@ import { runRuntimePortsTests } from "./unit/runtime-ports.test.js";
 import { runKernelObservabilityTests, runCoreStabilityAuditTests } from "./unit/kernel-observability.test.js";
 import { runCapabilitySelectorTests } from "./unit/capability-selector.test.js";
 import { runSkillModeTests } from "./unit/skill-mode.test.js";
+import { runSkillPolicyTests } from "./unit/skill-policy.test.js";
+import { runSkillRecallTests } from "./unit/skill-recall.test.js";
+import { runReadSkillToolTests } from "./unit/read-skill-tool.test.js";
 import { runAgentModeBenchmarkTests } from "./unit/agent-mode-benchmark.test.js";
 import { runBenchmarkGraderTests } from "./unit/benchmark-graders.test.js";
 import { runBenchmarkWorkloadTests } from "./unit/benchmark-workload.test.js";
@@ -74,6 +77,10 @@ import { runResumeTests } from "./unit/resume.test.js";
 import { runSessionStoreTests } from "./unit/session-store.test.js";
 import { runSessionCliTests } from "./unit/sessions.test.js";
 import { runTaskStrategyTests } from "./unit/task-strategy.test.js";
+import { runTaskClarityTests } from "./unit/task-clarity.test.js";
+import { runTaskClarityResolutionTests } from "./unit/task-clarity-resolution.test.js";
+import { runLspToolsTests } from "./unit/lsp-tools.test.js";
+import { runAccuracyScopeTests } from "./unit/accuracy-scope.test.js";
 import { runToolTests } from "./unit/tools.test.js";
 import { runTypeContractTests } from "./unit/types.test.js";
 import { runWorkspaceTests } from "./unit/workspace.test.js";
@@ -145,10 +152,17 @@ const tests: TestCase[] = [
   { name: "session store", run: runSessionStoreTests },
   { name: "session cli", run: runSessionCliTests },
   { name: "task strategy", run: runTaskStrategyTests },
+  { name: "task clarity", run: runTaskClarityTests },
+  { name: "task clarity resolution", run: runTaskClarityResolutionTests },
+  { name: "lsp tools", run: runLspToolsTests },
+  { name: "accuracy scope", run: runAccuracyScopeTests },
   { name: "agent mode registry", run: runAgentModeRegistryTests },
   { name: "agent mode permission", run: runAgentModePermissionTests },
   { name: "agent mode finalize", run: runAgentModeFinalizeTests },
   { name: "skill mode", run: runSkillModeTests },
+  { name: "skill policy", run: runSkillPolicyTests },
+  { name: "skill recall", run: runSkillRecallTests },
+  { name: "read skill tool", run: runReadSkillToolTests },
   { name: "run session", run: runRunSessionTests },
   { name: "plan session", run: runPlanSessionTests },
   { name: "plan mode protocol", run: runPlanModeProtocolTests },

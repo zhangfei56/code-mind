@@ -27,6 +27,10 @@ export type EventKind =
   | "permission.decision"
   | "approval.requested"
   | "approval.resolved"
+  | "clarify.requested"
+  | "clarify.resolved"
+  | "skill.confirm.requested"
+  | "skill.confirm.resolved"
   | "plan.entered"
   | "plan.exited"
   | "mode.changed"
@@ -120,6 +124,8 @@ export function defaultLevelForKind(kind: EventKind): EventLevel {
     case "permission.decision":
     case "approval.requested":
     case "approval.resolved":
+    case "clarify.requested":
+    case "clarify.resolved":
       return "info";
     default:
       return "info";

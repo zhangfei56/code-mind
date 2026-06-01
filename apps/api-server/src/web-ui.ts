@@ -4,6 +4,8 @@ import { createOrchestrationSessionStore, runtimeEventHub } from "@code-mind/cor
 import { logProcess } from "@code-mind/shared";
 import {
   handleApprovalRoutes,
+  handleClarifyRoutes,
+  handleSkillConfirmRoutes,
   handlePlanApprovalRoutes,
   handleRunRoutes,
   handleSessionRoutes,
@@ -67,6 +69,12 @@ export function createWebUiServer(workspaceRoot: string): Server {
       return;
     }
     if (await handleApprovalRoutes(request, response, store, url)) {
+      return;
+    }
+    if (await handleClarifyRoutes(request, response, url)) {
+      return;
+    }
+    if (await handleSkillConfirmRoutes(request, response, url)) {
       return;
     }
     if (await handlePlanApprovalRoutes(request, response, url)) {

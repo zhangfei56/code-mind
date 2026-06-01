@@ -1,4 +1,4 @@
-import type { ContextManager, ModelProvider } from "@code-mind/shared";
+import type { ContextManager, ModelProvider, SkillRunPolicy } from "@code-mind/shared";
 import type { ToolRegistry, ToolExecutor } from "@code-mind/execution";
 import type { PermissionEngine, SafetyGuard } from "@code-mind/security";
 import type { SessionStorePort } from "./ports/session-store-port.js";
@@ -35,6 +35,42 @@ export interface PermissionPrompter {
   ): Promise<{ approved: boolean; approvalId?: string }>;
 }
 
+export interface ClarifyRequest {
+  sessionId: string;
+  clarifyId: string;
+  taskText: string;
+  question: string;
+}
+
+export interface ClarifyPrompter {
+  clarify(
+    request: ClarifyRequest,
+    options?: {
+      onPending?: (clarifyId: string) => void | Promise<void>;
+    },
+  ): Promise<{ answer: string; clarifyId?: string; skipped?: boolean }>;
+}
+
+export interface SkillConfirmRequest {
+  sessionId: string;
+  confirmId: string;
+  taskText: string;
+  skillName: string;
+  skillDescription: string;
+  score: number;
+  reason: string;
+  locale?: "en" | "zh";
+}
+
+export interface SkillConfirmPrompter {
+  confirm(
+    request: SkillConfirmRequest,
+    options?: {
+      onPending?: (confirmId: string) => void | Promise<void>;
+    },
+  ): Promise<{ confirmed: boolean; confirmId?: string }>;
+}
+
 export interface RuntimeDependencies {
   contextManager?: ContextManager;
   permissionEngine?: PermissionEngine;
@@ -43,9 +79,12 @@ export interface RuntimeDependencies {
   toolRegistry?: ToolRegistry;
   toolExecutor?: ToolExecutor;
   extensionRegistry?: ExtensionRegistry;
+  skillRunPolicy?: SkillRunPolicy;
   subagentManager?: SubagentManager;
   sessionStoreFactory?: (workspaceRoot: string) => SessionStorePort;
   permissionPrompter?: PermissionPrompter;
+  clarifyPrompter?: ClarifyPrompter;
+  skillConfirmPrompter?: SkillConfirmPrompter;
   verificationPipeline?: VerificationPipeline;
   reviewEngine?: ReviewEngine;
   compactionPolicy?: import("@code-mind/shared").CompactionPolicy;

@@ -1,5 +1,5 @@
 import type { ExtensionRegistry, SubagentManager } from "@code-mind/capabilities";
-import type { AgentResult, AgentSession, RuntimeInput } from "@code-mind/shared";
+import type { AgentResult, AgentSession, RuntimeInput, SkillRunPolicy } from "@code-mind/shared";
 import type { ToolRegistry } from "@code-mind/execution";
 import type { SessionStorePort } from "./ports/session-store-port.js";
 import type { ResultBuilder } from "../result-builder.js";
@@ -41,6 +41,7 @@ export interface CreateRunScopedStepRunnerParams {
   publish: StepRunnerDeps["publish"];
   finalize: (result: AgentResult, runState: RunState) => AgentResult;
   extensionRegistry?: ExtensionRegistry;
+  skillRunPolicy?: SkillRunPolicy;
   subagentManager?: SubagentManager;
 }
 
@@ -64,6 +65,7 @@ export function createRunScopedStepRunner(
     ...(params.extensionRegistry === undefined
       ? {}
       : { extensionRegistry: params.extensionRegistry }),
+    ...(params.skillRunPolicy === undefined ? {} : { skillRunPolicy: params.skillRunPolicy }),
   };
 
   const toolHandler: ToolCallHandlerDeps = {

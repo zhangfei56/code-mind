@@ -1,10 +1,12 @@
 import { join } from "node:path";
+import type { SkillDefinition, SkillRunPolicy } from "@code-mind/shared";
 import { ExtensionRegistry } from "./registry.js";
 import { SkillEngine } from "./skill-engine.js";
 import { CommandSystem } from "./command-system.js";
 import { SubagentManager } from "./subagent-manager.js";
 import { PluginManager } from "./plugin-manager.js";
 import { loadExtensionSettings } from "./settings.js";
+import { skillPolicyFromSettings } from "./skill-policy.js";
 import { McpAdapter } from "@code-mind/execution";
 import { HookSystem } from "./hook-system.js";
 import { ToolRegistry } from "@code-mind/execution";
@@ -17,6 +19,19 @@ export interface LoadedExtensions {
   pluginManager: PluginManager;
   hookSystem: HookSystem;
   mcpAdapter: McpAdapter;
+  skillRunPolicy: SkillRunPolicy;
+}
+
+function registerSkills(registry: ExtensionRegistry, skills: SkillDefinition[]): void {
+  for (const skill of skills) {
+    if (registry.getSkill(skill.name) !== undefined) {
+      console.warn(
+        `[code-mind] Skipping duplicate skill "${skill.name}" (kept first registration, ignored ${skill.path}).`,
+      );
+      continue;
+    }
+    registry.registerSkill(skill);
+  }
 }
 
 export async function loadExtensions(
@@ -31,9 +46,7 @@ export async function loadExtensions(
   const pluginManager = new PluginManager(workspaceRoot);
   const mcpAdapter = new McpAdapter();
 
-  for (const skill of skillEngine.list()) {
-    registry.registerSkill(skill);
-  }
+  registerSkills(registry, skillEngine.list());
   for (const command of commandSystem.list()) {
     registry.registerCommand(command);
   }
@@ -77,5 +90,6 @@ export async function loadExtensions(
     pluginManager,
     hookSystem: new HookSystem(settings.hooks ?? {}, workspaceRoot),
     mcpAdapter,
+    skillRunPolicy: skillPolicyFromSettings(settings),
   };
 }
